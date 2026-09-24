@@ -1,0 +1,31 @@
+seed: 20260924
+window:
+  level: 50
+  width: 400
+paths:
+  data_root: data
+  artifact_root: artifacts
+  prediction_root: predictions
+  result_root: results
+  model_root: models
+splits:
+  dev_msd: 20
+  dev_care: 20
+tracks:
+  t1:
+    positives: 3
+    negatives: 9
+    permutations: 3
+    top_k: 5
+  t2:
+    max_slices_per_case: 3
+    canvas_size: 512
+  t3:
+    radius: 4
+  t4:
+    fov_mm: 120
+    output_size: 336
+  t5:
+    gaussian_sigma: 12.0
+    control_trials: 128
+    lesion_fractions: [0.25, 0.50, 0.75, 1.00]

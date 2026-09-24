@@ -1,0 +1,48 @@
+models:
+  qwen35_9b:
+    display_name: Qwen3.5-9B
+    modelscope_id: Qwen/Qwen3.5-9B
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96
+
+  internvl3_8b:
+    display_name: InternVL3-8B
+    modelscope_id: OpenGVLab/InternVL3-8B
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96
+
+  minicpm_v_45:
+    display_name: MiniCPM-V-4_5
+    modelscope_id: OpenBMB/MiniCPM-V-4_5
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96
+
+  qwen25vl_7b:
+    display_name: Qwen2.5-VL-7B-Instruct
+    modelscope_id: Qwen/Qwen2.5-VL-7B-Instruct
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96
+
+  medgemma_4b_it:
+    display_name: MedGemma-4B-IT
+    modelscope_id: google/medgemma-4b-it
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96
+
+  lingshu_7b:
+    display_name: Lingshu-7B
+    modelscope_id: lingshu-medical-mllm/Lingshu-7B
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: true
+    max_new_tokens: 96

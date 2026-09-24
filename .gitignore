@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+models/
+data/
+artifacts/
+predictions/
+results/
+*.nii
+*.nii.gz
+*.npz
+*.pth
+*.safetensors
