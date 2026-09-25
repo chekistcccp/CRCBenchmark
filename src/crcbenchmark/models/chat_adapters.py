@@ -16,6 +16,23 @@ IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
 
+def _install_remote_code_transformers_compat():
+    """
+    Backfill tied-weight bookkeeping expected by newer Transformers loaders.
+
+    InternVL/MiniCPM remote-code model classes were authored against the
+    Transformers 4.x API and may only expose _tied_weights_keys.  The frozen
+    benchmark runtime is Transformers 4.57.6, but this fallback also prevents
+    accidental 5.x environments from failing with all_tied_weights_keys.
+    """
+    try:
+        from transformers.modeling_utils import PreTrainedModel
+        if not hasattr(PreTrainedModel, "all_tied_weights_keys"):
+            PreTrainedModel.all_tied_weights_keys = {}
+    except Exception:
+        pass
+
+
 def _internvl_transform(input_size=448):
     return T.Compose(
         [
@@ -128,13 +145,13 @@ class InternVLChatVLM(VLMAdapter):
         self.dtype = _dtype(dtype)
         self.max_new_tokens = int(max_new_tokens)
 
+        _install_remote_code_transformers_compat()
         self.model = (
             AutoModel.from_pretrained(
                 self.model_path,
                 trust_remote_code=trust_remote_code,
                 torch_dtype=self.dtype,
-                low_cpu_mem_usage=True,
-                use_flash_attn=False,
+                low_cpu_mem_usage=False,
                 local_files_only=True,
             )
             .eval()
@@ -186,13 +203,14 @@ class MiniCPMChatVLM(VLMAdapter):
         self.dtype = _dtype(dtype)
         self.max_new_tokens = int(max_new_tokens)
 
+        _install_remote_code_transformers_compat()
         self.model = (
             AutoModel.from_pretrained(
                 self.model_path,
                 trust_remote_code=trust_remote_code,
                 attn_implementation="sdpa",
                 torch_dtype=self.dtype,
-                low_cpu_mem_usage=True,
+                low_cpu_mem_usage=False,
                 local_files_only=True,
             )
             .eval()
