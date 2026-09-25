@@ -18,11 +18,12 @@ set -euo pipefail
 MODELS_CONFIG=${MODELS_CONFIG:-configs/models.yaml}
 BENCHMARK_CONFIG=${BENCHMARK_CONFIG:-configs/benchmark.yaml}
 MANIFEST=${MANIFEST:-manifests/benchmark_v1.jsonl}
-NUM_GPUS=${NUM_GPUS:-4}
+NUM_GPUS=${NUM_GPUS:-1}
 
 mkdir -p manifests predictions results models artifacts
 
 python scripts/smoke_test.py
+python scripts/check_gpu.py
 
 INDEX_ARGS=(--output manifests/cases.jsonl)
 if [[ -n "${MSD_ROOT:-}" ]]; then
@@ -50,12 +51,19 @@ if [[ "${DOWNLOAD_MODELS:-1}" == "1" ]]; then
   python scripts/download_models.py --config "$MODELS_CONFIG" --model-root models
 fi
 
-mapfile -t MODEL_KEYS < <(python - <<'PY'
+if [[ -n "${RUN_MODELS:-}" ]]; then
+  read -r -a MODEL_KEYS <<< "$RUN_MODELS"
+else
+  mapfile -t MODEL_KEYS < <(python - <<'PY'
 import yaml
 with open('configs/models.yaml','r',encoding='utf-8') as f:
     print('\n'.join(yaml.safe_load(f)['models'].keys()))
 PY
 )
+fi
+
+echo "GPU workers: $NUM_GPUS"
+echo "Models: ${MODEL_KEYS[*]}"
 
 for model in "${MODEL_KEYS[@]}"; do
   echo "=== $model ==="
