@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import torch
-from PIL import Image
 from transformers import pipeline
 
 from .base import VLMAdapter
@@ -61,12 +60,12 @@ class PipelineVLM(VLMAdapter):
         )
 
     def generate(self, image_path, prompt, max_new_tokens=None):
-        image = Image.open(image_path).convert("RGB")
+        image_path = str(Path(image_path).resolve())
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "image": image},
+                    {"type": "image", "url": image_path},
                     {"type": "text", "text": prompt},
                 ],
             }
