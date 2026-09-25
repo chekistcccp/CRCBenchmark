@@ -8,6 +8,7 @@ set -euo pipefail
 #   CARE_MAPPING=/data/CARE/care_index.csv      # required if filenames do not prove patient/slice order
 #   CARE_TUMOR_LABEL=...                        # set only after official CARE label semantics are verified
 #   CARE_NORMAL_LABEL=...                       # set only after official CARE label semantics are verified
+#   CARE_INDEX_SOURCE=txt|bbox_csv|all_npz      # freeze after CARE audit v3; auto refuses ambiguous release lists
 #
 # IMPORTANT: before enabling CARE, run:
 #   CARE_SOURCE=/path/to/CARE.zip bash run_data_audit.sh
@@ -32,7 +33,7 @@ if [[ -n "${CARE_ROOT:-}" ]]; then
     echo "Run scripts/inspect_care.py first and verify official label semantics; do not guess label IDs." >&2
     exit 2
   fi
-  INDEX_ARGS+=(--care-root "$CARE_ROOT" --care-tumor-label "$CARE_TUMOR_LABEL")
+  INDEX_ARGS+=(--care-root "$CARE_ROOT" --care-tumor-label "$CARE_TUMOR_LABEL" --care-index-source "${CARE_INDEX_SOURCE:-auto}")
   if [[ -n "${CARE_NORMAL_LABEL:-}" ]]; then
     INDEX_ARGS+=(--care-normal-label "$CARE_NORMAL_LABEL")
   fi
