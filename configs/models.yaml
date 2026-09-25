@@ -21,7 +21,7 @@ models:
 
   glm46v_flash:
     display_name: GLM-4.6V-Flash
-    modelscope_id: zai-org/GLM-4.6V-Flash
+    modelscope_id: ZhipuAI/GLM-4.6V-Flash
     adapter: pipeline
     dtype: bfloat16
     trust_remote_code: false
@@ -34,7 +34,7 @@ models:
     modelscope_id: OpenGVLab/InternVL3_5-8B-HF
     adapter: pipeline
     dtype: bfloat16
-    trust_remote_code: true
+    trust_remote_code: false
     max_new_tokens: 96
     role: internvl_peer
     release: "2025-08"
