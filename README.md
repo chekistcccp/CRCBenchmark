@@ -45,13 +45,56 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ---
 
-## 2. Benchmark 五个 Track
+## 2. 当前 CARE 实际审查结论
+
+第一次对实际下载的 `CARE.zip` 审查已经完成，当前 release 显示：
+
+- 压缩包根目录为 `DataV6`；
+- train NPZ：**26,656**；
+- test NPZ：**6,461**；
+- 文件名可以 **100%** 解析为 `case_id + slice_index`；
+- train 可解析出 **318** 个 case ID；
+- test 可解析出 **81** 个 case ID；
+- 所有抽样图像均为 `512 × 512`；
+- 图像值域为 `[0, 1]`，因此 CARE 按已预处理图像使用，而不是重新执行 HU window；
+- 原始 label 抽样观察到 `0/1/2/3`；
+- 官方 U-SAM dataloader 在进入三分类训练前执行 `mask[mask > 2] = 2`，因此本仓库将 raw label `3` 按同一规则归并到 canonical class `2`；
+- **canonical class 1/2 的医学语义仍需最终确认后才写死**；
+- train 中约 89.6% 的患者级序列全局连续，test 中约 95.1% 全局连续。由于官方论文明确说明删除了“不含直肠”的切片，因此本项目不再要求整个患者序列全局连续，而只在 T3 中使用能够证明 source slice index 连续的局部窗口；
+- 当前 archive 的 train NPZ 数量比论文报告的 26,563 多 93 个，而 test 数量与论文的 6,461 一致。正式 benchmark 默认跟随官方 U-SAM 的 CSV 索引，不自动纳入未被 CSV 引用的额外 NPZ。
+
+因此 CARE 的定位从“无法判断是否能恢复患者序列”更新为：
+
+> **患者 ID 和原始 slice index 具有很强的可恢复证据；T1 在标签语义确认后可以纳入 CARE，T3 则仅使用真实连续的局部 slice window。**
+
+在冻结 Benchmark v1 前，还需要运行新版 audit v2，额外确认：
+
+1. train/test 是否存在重复 case ID；
+2. CSV 与 NPZ 的精确集合差异；
+3. 4 个 TXT 和其他小型 metadata 文件中是否包含额外映射说明；
+4. canonical class 1/2 的最终医学语义。
+
+重新运行：
+
+```bash
+CARE_SOURCE=data/raw/CARE/CARE.zip bash run_data_audit.sh
+```
+
+默认输出：
+
+```text
+manifests/care_audit_v2.json
+```
+
+---
+
+## 3. Benchmark 五个 Track
 
 | Track | 主要问题 | 数据集 | 主要指标 |
 |---|---|---|---|
-| **T1 Lesion Retrieval** | VLM 能否从同一病例的一组 CT 层面中找到肿瘤层面？ | MSD；CARE 仅在患者/层序得到验证后启用 | Recall@3 |
+| **T1 Lesion Retrieval** | VLM 能否从同一病例的一组 CT 层面中找到肿瘤层面？ | MSD；CARE 在标签语义确认后启用 | Recall@3 |
 | **T2 Visual Grounding** | VLM 能否把坐标或框真正定位到肿瘤？ | MSD + 经验证后的 CARE | Pointing Accuracy |
-| **T3 Volumetric Consistency** | VLM 能否识别病灶沿 z 轴的出现/消失和连续性？ | MSD；CARE 仅在连续层序得到验证后启用 | Slice F1 |
+| **T3 Volumetric Consistency** | VLM 能否识别病灶沿 z 轴的出现/消失和连续性？ | MSD；CARE 仅使用 source slice index 真正连续的局部窗口 | Slice F1 |
 | **T4 CARE Hard Negative** | VLM 能否区分癌性直肠组织与正常直肠壁？ | CARE | Pairwise Accuracy |
 | **T5 Counterfactual Faithfulness** | 删除真实病灶是否比删除匹配对照区域更显著地改变模型判断？ | MSD + 经验证后的 CARE | Faithfulness Gap |
 
@@ -59,7 +102,7 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ---
 
-## 3. 计划评测的开放权重模型
+## 4. 计划评测的开放权重模型
 
 当前 `configs/models.yaml` 包含：
 
@@ -80,7 +123,7 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ---
 
-## 4. 推荐环境
+## 5. 推荐环境
 
 建议：
 
@@ -102,7 +145,7 @@ export PYTHONPATH=$PWD/src:$PYTHONPATH
 
 ---
 
-## 5. 推荐目录结构
+## 6. 推荐目录结构
 
 ```text
 CRCBenchmark/
@@ -128,7 +171,7 @@ CRCBenchmark/
 
 ---
 
-# 6. MSD Task10 Colon 数据准备
+# 7. MSD Task10 Colon 数据准备
 
 推荐结构：
 
@@ -156,7 +199,7 @@ MSD 按原始 CT 处理，可以使用 HU soft-tissue window。
 
 ---
 
-# 7. CARE：下载后第一步不是解压，而是审查
+# 8. CARE：下载后第一步不是解压，而是审查
 
 将下载得到的压缩包原封不动放入：
 
@@ -188,7 +231,7 @@ python scripts/inspect_care.py \
 
 ---
 
-## 8. CARE 审查脚本会检查什么？
+## 9. CARE 审查脚本会检查什么？
 
 审查报告包括：
 
@@ -237,7 +280,7 @@ SEMANTICS UNVERIFIED
 
 ---
 
-## 9. CARE 是否可以恢复患者级 3D 序列？
+## 10. CARE 是否可以恢复患者级 3D 序列？
 
 这是正式 Benchmark 前必须解决的关键问题。
 
@@ -286,7 +329,7 @@ care_3d_tracks_enabled: false
 
 ---
 
-# 10. CARE 完整解压
+# 11. CARE 完整解压
 
 第一轮 ZIP 审查完成后，再根据需要完整解压：
 
@@ -317,7 +360,7 @@ data/extracted/CARE/CARE/train/...
 
 ---
 
-# 11. CARE 患者/层序映射
+# 12. CARE 患者/层序映射
 
 如果文件名无法可靠恢复患者身份和切片顺序，则必须提供显式 mapping CSV：
 
@@ -345,7 +388,7 @@ split
 
 ---
 
-# 12. CARE 标签语义必须显式确认
+# 13. CARE 标签语义必须显式确认
 
 当前代码已经取消所有 CARE 标签默认值。
 
@@ -371,7 +414,7 @@ python scripts/index_datasets.py \
 
 ---
 
-# 13. CARE 图像强度处理原则
+# 14. CARE 图像强度处理原则
 
 ### MSD
 
@@ -402,7 +445,7 @@ CARE 公共 NPZ 当前按**预处理后的打包图像**处理。
 
 ---
 
-# 14. 构建 Benchmark
+# 15. 构建 Benchmark
 
 完成病例索引后：
 
@@ -423,7 +466,7 @@ artifacts/
 
 ---
 
-# 15. 下载模型
+# 16. 下载模型
 
 全部模型：
 
@@ -443,7 +486,7 @@ python scripts/download_models.py \
 
 ---
 
-# 16. 单 GPU 推理
+# 17. 单 GPU 推理
 
 例如：
 
@@ -456,7 +499,7 @@ python scripts/run_inference.py \
 
 ---
 
-# 17. 四张 RTX 3090 并行推理
+# 18. 四张 RTX 3090 并行推理
 
 对于可以单卡加载的模型，推荐按病例分片：
 
@@ -483,7 +526,7 @@ python scripts/merge_shards.py \
 
 ---
 
-# 18. 结果评价
+# 19. 结果评价
 
 ```bash
 python scripts/evaluate.py \
@@ -503,7 +546,7 @@ python scripts/evaluate.py \
 
 ---
 
-# 19. 一键运行
+# 20. 一键运行
 
 在数据审查完成并确认环境变量后：
 
@@ -529,7 +572,7 @@ CARE_TUMOR_LABEL
 
 ---
 
-# 20. 当前最重要的操作顺序
+# 21. 当前最重要的操作顺序
 
 如果你刚开始准备数据，建议严格按照下面顺序：
 
@@ -581,7 +624,7 @@ manifests/care_audit.json
 
 ---
 
-# 21. 科学设计边界
+# 22. 科学设计边界
 
 本项目明确不做：
 
@@ -612,7 +655,7 @@ Did removing that lesion actually change its decision?
 
 ---
 
-# 22. 论文方法学原则
+# 23. 论文方法学原则
 
 为了保证后续能够用于高水平期刊投稿：
 
@@ -627,7 +670,7 @@ Did removing that lesion actually change its decision?
 
 ---
 
-# 23. 详细研究协议
+# 24. 详细研究协议
 
 完整科学方案见：
 
