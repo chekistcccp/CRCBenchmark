@@ -427,8 +427,7 @@ CARE_NORMAL_LABEL
 | `qwen36_27b` | Qwen3.6-27B | 更新一代、更大规模 Qwen |
 | `glm46v_flash` | GLM-4.6V-Flash | 约 9B 级通用 VLM 对照 |
 | `internvl35_8b_hf` | InternVL3.5-8B-HF | InternVL 系列、HF 标准格式 |
-| `medgemma15_4b
-gemma4_26b_a4b` | MedGemma 1.5 4B IT | 2026 医疗多模态专用模型 |
+| `medgemma15_4b` | MedGemma 1.5 4B IT | 2026 医疗多模态专用模型 |
 | `gemma4_26b_a4b` | Gemma 4 26B-A4B IT | Google 2026 多模态 MoE 通用模型 |
 
 旧模型：
