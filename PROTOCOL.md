@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v2.0
+# ColoGround-Bench Protocol v2.1
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -189,3 +189,25 @@ data/raw/CARE/CARE.zip
 Supported MSD/CARE archive formats for automatic extraction are ZIP, TAR, TAR.GZ, and TGZ. Data are extracted under `data/extracted/`, and the code recursively locates the actual MSD root containing `imagesTr/labelsTr` and CARE root containing `test/test_npz/test.txt`.
 
 Extraction is resumable at the file level: an already extracted file with the expected uncompressed size is skipped. This is intended for preemptible/time-limited Slurm jobs.
+
+
+## Frozen software runtime
+
+The primary benchmark runtime is frozen to:
+
+```text
+Python       = 3.11
+PyTorch      = 2.13.0
+torchvision  = 0.28.0
+PyTorch CUDA wheel index = cu126
+Transformers = 5.17.0
+```
+
+PyTorch and torchvision are installed separately using the official CUDA 12.6 wheel index:
+
+```bash
+pip install torch==2.13.0 torchvision==0.28.0 \
+  --index-url https://download.pytorch.org/whl/cu126
+```
+
+The project `requirements.txt` intentionally excludes torch and torchvision to prevent the remaining Python dependencies from replacing the frozen CUDA runtime.
