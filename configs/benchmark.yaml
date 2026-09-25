@@ -24,6 +24,7 @@ tracks:
     radius: 4
   t4:
     fov_mm: 120
+    fallback_crop_px: 160
     output_size: 336
   t5:
     gaussian_sigma: 12.0
