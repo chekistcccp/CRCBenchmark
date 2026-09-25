@@ -62,7 +62,7 @@ echo "========================================================================"
 # 0. Preflight
 # ---------------------------------------------------------------------------
 echo
-echo "===== [0/7] Preflight ====="
+echo "===== [0/8] Preflight ====="
 python scripts/smoke_test.py
 python scripts/check_gpu.py
 
@@ -70,7 +70,7 @@ python scripts/check_gpu.py
 # 1. Data discovery / extraction
 # ---------------------------------------------------------------------------
 echo
-echo "===== [1/7] Prepare datasets ====="
+echo "===== [1/8] Prepare datasets ====="
 
 if [[ "$AUTO_PREPARE_DATA" == "1" && ( -z "$MSD_ROOT" || ( "$ENABLE_CARE" == "1" && -z "$CARE_ROOT" ) ) ]]; then
   PREPARE_ARGS=(--data-root "$DATA_ROOT" --output manifests/data_paths.json)
@@ -119,7 +119,7 @@ fi
 # 2. Build experiment manifests
 # ---------------------------------------------------------------------------
 echo
-echo "===== [2/7] Build frozen experiment manifests ====="
+echo "===== [2/8] Build frozen experiment manifests ====="
 
 echo "[MSD] indexing"
 python scripts/index_datasets.py   --msd-root "$MSD_ROOT"   --output manifests/cases_msd.jsonl
@@ -147,7 +147,7 @@ fi
 # 3. Download all model weights
 # ---------------------------------------------------------------------------
 echo
-echo "===== [3/7] Download ALL configured model weights ====="
+echo "===== [3/8] Download ALL configured model weights ====="
 python scripts/download_models.py   --config "$MODELS_CONFIG"   --model-root "$MODEL_ROOT"
 
 if [[ -n "$ONLY_MODELS" ]]; then
@@ -173,10 +173,28 @@ echo "Models     : ${MODEL_KEYS[*]}"
 echo "Experiments: ${EXPERIMENTS[*]}"
 
 # ---------------------------------------------------------------------------
-# 4-5. Inference + evaluation
+# 4. Adapter smoke tests
 # ---------------------------------------------------------------------------
 echo
-echo "===== [4/7] Run all models on all experiment branches ====="
+echo "===== [4/8] Real-image model adapter smoke tests ====="
+for model in "${MODEL_KEYS[@]}"; do
+  echo
+  echo "[adapter smoke] $model"
+  python scripts/model_adapter_smoke.py \
+    --model "$model" \
+    --models-config "$MODELS_CONFIG" \
+    --benchmark-config "$BENCHMARK_CONFIG" \
+    --model-root "$MODEL_ROOT" \
+    --manifest manifests/benchmark_msd.jsonl
+done
+
+echo "All model adapters passed one-item image inference."
+
+# ---------------------------------------------------------------------------
+# 5. Inference + evaluation
+# ---------------------------------------------------------------------------
+echo
+echo "===== [5/8] Run all models on all experiment branches ====="
 
 FAILED=()
 
@@ -215,14 +233,14 @@ done
 # 6. Collect summaries
 # ---------------------------------------------------------------------------
 echo
-echo "===== [6/7] Collect experiment summaries ====="
+echo "===== [6/8] Collect experiment summaries ====="
 python scripts/collect_results.py   --results-root results   --output results/all_experiments_summary.json
 
 # ---------------------------------------------------------------------------
 # 7. Final status
 # ---------------------------------------------------------------------------
 echo
-echo "===== [7/7] Final status ====="
+echo "===== [7/8] Final status ====="
 
 python - <<'PY'
 import json, os, platform, datetime
