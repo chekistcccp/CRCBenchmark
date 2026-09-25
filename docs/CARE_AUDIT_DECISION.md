@@ -93,3 +93,33 @@ python scripts/index_datasets.py \
 ```
 
 主 Benchmark 默认不得自动加入 CARE train。
+
+
+## 7. 未决 class 语义的自动双分支实验
+
+当前 release 能够确认 canonical foreground classes 为 1 和 2，但数值 ID 与“tumor / normal rectal tissue”的医学语义尚未获得足够明确的官方数字映射说明。
+
+为避免这一点阻塞完整 benchmark，正式代码预先固定两套 CARE semantic sensitivity branches：
+
+```text
+care_tumor1_normal2
+  tumor  = 1
+  normal = 2
+
+care_tumor2_normal1
+  tumor  = 2
+  normal = 1
+```
+
+两套分支：
+
+- 使用同一 test.txt primary cohort；
+- 分别生成独立 cases manifest；
+- 分别生成独立 benchmark manifest；
+- 使用独立 artifacts 目录；
+- 所有模型分别运行；
+- 所有结果分别评价。
+
+两套结果不得用于“通过哪个模型表现更高来推测真实标签语义”。未来如获得权威映射，匹配的分支升级为 primary CARE result，反向分支作为 label-inversion sensitivity/control。
+
+根目录 `run.sh` 已自动执行以上两套 CARE 分支，因此正式计算实验不再依赖手工设置 `CARE_TUMOR_LABEL` / `CARE_NORMAL_LABEL`。
