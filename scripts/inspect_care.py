@@ -16,6 +16,7 @@ import numpy as np
 
 REFERENCE = {
     "paper_total_patients": 398,
+    "paper_train_cases_abstract": 317,
     "paper_train_cases_methods": 318,
     "paper_test_cases": 81,
     "paper_train_pairs": 26563,
@@ -170,6 +171,47 @@ def parse_bbox_csv(text):
     }
 
 
+def parse_name_list(text):
+    names=[line.strip() for line in text.splitlines() if line.strip()]
+    parsed=[]
+    unparsed=[]
+    for name in names:
+        p=infer_case_slice(name)
+        if p is None:
+            unparsed.append(name)
+        else:
+            parsed.append((name,p[0],int(p[1])))
+    cases=sorted({x[1] for x in parsed})
+    dup=[x for x,n in Counter(names).items() if n>1]
+    return {
+        "record_count":len(names),
+        "unique_record_count":len(set(names)),
+        "duplicate_record_count":len(dup),
+        "duplicate_examples":sorted(dup)[:20],
+        "parse_count":len(parsed),
+        "parse_fraction":len(parsed)/len(names) if names else 0.0,
+        "inferred_case_count":len(cases),
+        "case_ids":cases,
+        "unparsed_examples":unparsed[:20],
+        "_ids":names,
+    }
+
+
+def name_list_membership(info,npz_members):
+    ids=set(info.get("_ids",[]))
+    npz_ids={PurePosixPath(x).stem for x in npz_members}
+    missing=sorted(ids-npz_ids)
+    extra=sorted(npz_ids-ids)
+    return {
+        "list_record_count":info.get("record_count",0),
+        "npz_count":len(npz_members),
+        "list_missing_npz_count":len(missing),
+        "list_missing_npz_examples":missing[:20],
+        "npz_not_in_list_count":len(extra),
+        "npz_not_in_list_examples":extra[:20],
+    }
+
+
 def membership_diagnostics(csv_info, npz_members):
     ids = list(csv_info.get("_ids", []))
     npz_by_stem = {PurePosixPath(x).stem: x for x in npz_members}
@@ -287,85 +329,193 @@ def small_metadata_previews(names, size_lookup, read_bytes, max_bytes=1_000_000)
     return selected
 
 
-def finalize(report):
-    train_cases = set(report["splits"]["train"]["filename_structure"].get("case_ids", []))
-    test_cases = set(report["splits"]["test"]["filename_structure"].get("case_ids", []))
-    overlap = sorted(train_cases & test_cases)
-    total_unique = len(train_cases | test_cases)
-
-    report["cross_split"] = {
-        "train_case_count": len(train_cases),
-        "test_case_count": len(test_cases),
-        "overlap_case_count": len(overlap),
-        "overlap_case_examples": overlap[:20],
-        "total_unique_case_ids": total_unique,
-        "reference_total_patients": REFERENCE["paper_total_patients"],
-        "matches_reference_total": total_unique == REFERENCE["paper_total_patients"],
+def _source_case_summary(split_payload,source):
+    if source=="npz_all":
+        fs=split_payload["filename_structure"]
+        return {
+            "record_count":fs["count"],
+            "case_ids":set(split_payload.get("_npz_case_ids",[])),
+            "parse_fraction":fs["parse_fraction"],
+        }
+    if source=="bbox_csv":
+        x=split_payload.get("bbox_csv") or {}
+        return {
+            "record_count":x.get("record_count",0),
+            "case_ids":set(x.get("case_ids",[])),
+            "parse_fraction":x.get("case_parse_fraction",0.0),
+        }
+    x=(split_payload.get("release_lists") or {}).get(source) or {}
+    return {
+        "record_count":x.get("record_count",0),
+        "case_ids":set(x.get("case_ids",[])),
+        "parse_fraction":x.get("parse_fraction",0.0),
     }
 
-    for split in ("train", "test"):
-        report["splits"][split]["filename_structure"].pop("case_ids", None)
-        csv_info = report["splits"][split].get("bbox_csv")
-        if csv_info:
-            csv_info.pop("_ids", None)
 
-    fracs = [
+def _cross_split_for_source(report,source):
+    tr=_source_case_summary(report["splits"]["train"],source)
+    te=_source_case_summary(report["splits"]["test"],source)
+    overlap=sorted(tr["case_ids"] & te["case_ids"])
+    total=len(tr["case_ids"] | te["case_ids"])
+    return {
+        "source":source,
+        "train_record_count":tr["record_count"],
+        "test_record_count":te["record_count"],
+        "train_case_count":len(tr["case_ids"]),
+        "test_case_count":len(te["case_ids"]),
+        "overlap_case_count":len(overlap),
+        "overlap_case_examples":overlap[:20],
+        "total_unique_case_ids":total,
+        "train_parse_fraction":tr["parse_fraction"],
+        "test_parse_fraction":te["parse_fraction"],
+        "matches_paper_pair_counts":(
+            tr["record_count"]==REFERENCE["paper_train_pairs"]
+            and te["record_count"]==REFERENCE["paper_test_pairs"]
+        ),
+        "matches_paper_total_patients":total==REFERENCE["paper_total_patients"],
+        "matches_abstract_case_split":(
+            len(tr["case_ids"])==REFERENCE["paper_train_cases_abstract"]
+            and len(te["case_ids"])==REFERENCE["paper_test_cases"]
+        ),
+        "matches_methods_case_split":(
+            len(tr["case_ids"])==REFERENCE["paper_train_cases_methods"]
+            and len(te["case_ids"])==REFERENCE["paper_test_cases"]
+        ),
+    }
+
+
+def finalize(report):
+    # Preserve the archive-wide NPZ view for backwards compatibility.
+    train_cases=set(report["splits"]["train"].get("_npz_case_ids",[]))
+    test_cases=set(report["splits"]["test"].get("_npz_case_ids",[]))
+    overlap=sorted(train_cases & test_cases)
+    total_unique=len(train_cases | test_cases)
+    report["cross_split"]={
+        "train_case_count":len(train_cases),
+        "test_case_count":len(test_cases),
+        "overlap_case_count":len(overlap),
+        "overlap_case_examples":overlap[:20],
+        "total_unique_case_ids":total_unique,
+        "reference_total_patients":REFERENCE["paper_total_patients"],
+        "matches_reference_total":total_unique==REFERENCE["paper_total_patients"],
+        "basis":"all_npz_files",
+    }
+
+    sources=["npz_all","bbox_csv","txt","bbox_txt"]
+    report["cross_split_by_index_source"]={
+        s:_cross_split_for_source(report,s) for s in sources
+    }
+
+    # Candidate source = complete mapping, no cross-split overlap, and best alignment
+    # with the published slice-pair/patient counts. This is advisory only.
+    candidates=[]
+    for s,x in report["cross_split_by_index_source"].items():
+        if x["train_parse_fraction"]==1.0 and x["test_parse_fraction"]==1.0 and x["overlap_case_count"]==0:
+            score=0
+            score+=4 if x["matches_paper_pair_counts"] else 0
+            score+=3 if x["matches_paper_total_patients"] else 0
+            score+=2 if x["matches_abstract_case_split"] else 0
+            score+=1 if x["matches_methods_case_split"] else 0
+            candidates.append((score,s))
+    candidates.sort(reverse=True)
+    report["index_source_assessment"]={
+        "best_alignment_candidate":candidates[0][1] if candidates else None,
+        "candidate_scores":[{"source":s,"score":score} for score,s in candidates],
+        "note":"Advisory only. Freeze the CARE primary index source only after reviewing v3 counts and official release documentation.",
+    }
+
+    fracs=[
         report["splits"][s]["filename_structure"]["parse_fraction"]
-        for s in ("train", "test")
+        for s in ("train","test")
         if report["splits"][s]["filename_structure"]["count"]
     ]
-    raw_vals = set()
-    canonical_vals = set()
-    for s in ("train", "test"):
-        na = report["splits"][s]["npz_sample_audit"]
-        raw_vals.update(na.get("observed_raw_label_values", []))
-        canonical_vals.update(na.get("canonical_label_values_after_usam_rule", []))
+    raw_vals=set()
+    canonical_vals=set()
+    for s in ("train","test"):
+        na=report["splits"][s]["npz_sample_audit"]
+        raw_vals.update(na.get("observed_raw_label_values",[]))
+        canonical_vals.update(na.get("canonical_label_values_after_usam_rule",[]))
 
-    report["safety"] = {
-        "label_semantics_verified": False,
-        "patient_slice_mapping_verified": False,
-        "observed_raw_label_values_from_samples": sorted(raw_vals),
-        "canonical_label_values_after_usam_rule": sorted(canonical_vals),
-        "filename_mapping_candidate": bool(fracs) and all(x == 1.0 for x in fracs),
-        "cross_split_overlap_free": len(overlap) == 0,
-        "care_t1_structurally_possible": bool(fracs) and all(x == 1.0 for x in fracs),
-        "care_t3_local_windows_structurally_possible": any(
-            report["splits"][s]["filename_structure"]["cases_with_consecutive_run_ge_9"] > 0
-            for s in ("train", "test")
+    report["safety"]={
+        "label_semantics_verified":False,
+        "patient_slice_mapping_verified":False,
+        "observed_raw_label_values_from_samples":sorted(raw_vals),
+        "canonical_label_values_after_usam_rule":sorted(canonical_vals),
+        "filename_mapping_candidate":bool(fracs) and all(x==1.0 for x in fracs),
+        "cross_split_overlap_free_all_npz":len(overlap)==0,
+        "care_t1_structurally_possible":bool(fracs) and all(x==1.0 for x in fracs),
+        "care_t3_local_windows_structurally_possible":any(
+            report["splits"][s]["filename_structure"]["cases_with_consecutive_run_ge_9"]>0
+            for s in ("train","test")
         ),
-        "care_semantic_tracks_enabled": False,
+        "care_semantic_tracks_enabled":False,
     }
 
-    report["next_steps"] = [
-        "Use bbox CSV membership as the default CARE inclusion list because the official U-SAM dataloader is CSV-indexed.",
+    report["next_steps"]=[
+        "Compare train.txt/test.txt, *_bbox.txt, bbox CSV, and all NPZ using cross_split_by_index_source.",
+        "Freeze the primary CARE index source only after selecting the source that best matches the published 33,024 slice pairs and 398 patients.",
         "Do not assign normal/tumor meaning to canonical label IDs 1 and 2 until verified from official annotation evidence.",
         "Treat raw CARE label 3 according to the official U-SAM preprocessing rule: collapse raw values >2 to canonical class 2.",
-        "CARE T1 can be enabled after label semantics are verified because filenames preserve case_id and slice_index.",
+        "CARE T1 is structurally possible because filenames preserve case_id and slice_index.",
         "CARE T3 should use only local consecutive source-slice windows; do not require every retained slice in a patient to be globally contiguous.",
-        "Review cross-split overlap, CSV/NPZ set differences, and small metadata-file previews before freezing the benchmark.",
         "Use CARE image arrays as packaged; do not apply an HU window unless original HU semantics are independently verified.",
     ]
+
+    # Remove internal helper fields before serialization.
+    for split in ("train","test"):
+        report["splits"][split].pop("_npz_case_ids",None)
+        csv_info=report["splits"][split].get("bbox_csv")
+        if csv_info:
+            csv_info.pop("_ids",None)
+            csv_info.pop("case_ids",None)
+        for info in (report["splits"][split].get("release_lists") or {}).values():
+            info.pop("_ids",None)
+            info.pop("case_ids",None)
     return report
 
 
-def build_split_report(split, npz_members, bbox_name, read_bytes, sample_n):
-    csv_info = None
-    membership = None
+def build_split_report(split,npz_members,bbox_name,read_bytes,sample_n,release_list_names=None):
+    fs=filename_diagnostics(npz_members)
+    parsed_npz=[]
+    for name in npz_members:
+        p=infer_case_slice(PurePosixPath(name).stem)
+        if p is not None:
+            parsed_npz.append(p[0])
+
+    csv_info=None
+    membership=None
     if bbox_name:
-        csv_info = parse_bbox_csv(read_bytes(bbox_name).decode("utf-8-sig", errors="replace"))
-        membership = membership_diagnostics(csv_info, npz_members)
+        csv_info=parse_bbox_csv(read_bytes(bbox_name).decode("utf-8-sig",errors="replace"))
+        parsed=[]
+        for name in csv_info.get("_ids",[]):
+            p=infer_case_slice(name)
+            if p is not None:
+                parsed.append(p[0])
+        csv_info["case_ids"]=sorted(set(parsed))
+        csv_info["inferred_case_count"]=len(set(parsed))
+        csv_info["case_parse_fraction"]=len(parsed)/csv_info["record_count"] if csv_info["record_count"] else 0.0
+        membership=membership_diagnostics(csv_info,npz_members)
+
+    release_lists={}
+    for key,name in (release_list_names or {}).items():
+        if not name:
+            continue
+        info=parse_name_list(read_bytes(name).decode("utf-8-sig",errors="replace"))
+        info["path"]=name
+        info["membership_vs_npz"]=name_list_membership(info,npz_members)
+        release_lists[key]=info
 
     return {
-        "filename_structure": filename_diagnostics(npz_members),
-        "bbox_csv": csv_info,
-        "csv_npz_membership": membership,
-        "npz_sample_audit": npz_summary(read_bytes, npz_members, sample_n),
-        "reference": {
-            "paper_pair_count": REFERENCE[f"paper_{split}_pairs"],
-            "archive_npz_count_matches_paper": len(npz_members)
-            == REFERENCE[f"paper_{split}_pairs"],
-            "npz_count_difference_vs_paper": len(npz_members)
-            - REFERENCE[f"paper_{split}_pairs"],
+        "filename_structure":fs,
+        "_npz_case_ids":sorted(set(parsed_npz)),
+        "bbox_csv":csv_info,
+        "csv_npz_membership":membership,
+        "release_lists":release_lists,
+        "npz_sample_audit":npz_summary(read_bytes,npz_members,sample_n),
+        "reference":{
+            "paper_pair_count":REFERENCE[f"paper_{split}_pairs"],
+            "archive_npz_count_matches_paper":len(npz_members)==REFERENCE[f"paper_{split}_pairs"],
+            "npz_count_difference_vs_paper":len(npz_members)-REFERENCE[f"paper_{split}_pairs"],
         },
     }
 
@@ -394,7 +544,7 @@ def audit_zip(path: Path, sample_n: int):
             return z.read(name)
 
         report = {
-            "audit_version": 2,
+            "audit_version": 3,
             "source": str(path),
             "source_type": "zip",
             "archive_size_bytes": path.stat().st_size,
@@ -413,7 +563,7 @@ def audit_zip(path: Path, sample_n: int):
         }
         for s in ("train", "test"):
             report["splits"][s] = build_split_report(
-                s, split_members[s], bbox[s], read_bytes, sample_n
+                s, split_members[s], bbox[s], read_bytes, sample_n, release_lists[s]
             )
         return finalize(report)
 
@@ -466,7 +616,7 @@ def audit_dir(root: Path, sample_n: int):
     }
     for s in ("train", "test"):
         report["splits"][s] = build_split_report(
-            s, split_members[s], bbox[s], read_bytes, sample_n
+            s, split_members[s], bbox[s], read_bytes, sample_n, release_lists[s]
         )
     return finalize(report)
 
@@ -474,7 +624,7 @@ def audit_dir(root: Path, sample_n: int):
 def print_report(r):
     inv = r["inventory"]
     print("=" * 78)
-    print("CARE DATA AUDIT v2 -- READ ONLY")
+    print("CARE DATA AUDIT v3 -- READ ONLY")
     print("=" * 78)
     print("Source:", r["source"])
     print("Type:", r["source_type"])
@@ -531,6 +681,17 @@ def print_report(r):
             print("unparsed examples:", fs["unparsed_examples"][:10])
 
     print("-" * 78)
+    print("-" * 78)
+    print("Index-source comparison:")
+    for source,x in r.get("cross_split_by_index_source",{}).items():
+        print(
+            f" {source}: records={x['train_record_count']}+{x['test_record_count']} "
+            f"cases={x['train_case_count']}+{x['test_case_count']} "
+            f"unique={x['total_unique_case_ids']} overlap={x['overlap_case_count']} "
+            f"paper_pairs={x['matches_paper_pair_counts']} paper_patients={x['matches_paper_total_patients']}"
+        )
+    print("Best alignment candidate:",r.get("index_source_assessment",{}).get("best_alignment_candidate"))
+
     cs = r["cross_split"]
     print(
         "cross-split cases:",
@@ -563,7 +724,7 @@ def main():
     p = argparse.ArgumentParser(description="Read-only CARE release audit")
     p.add_argument("source", help="CARE.zip or extracted CARE directory")
     p.add_argument("--sample-n", type=int, default=50)
-    p.add_argument("--output", default="manifests/care_audit_v2.json")
+    p.add_argument("--output", default="manifests/care_audit_v3.json")
     a = p.parse_args()
 
     src = Path(a.source)
