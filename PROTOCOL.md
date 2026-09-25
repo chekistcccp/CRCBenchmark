@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.9
+# ColoGround-Bench Protocol v2.0
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -134,7 +134,8 @@ The benchmark uses a **Qwen3.5-era modern VLM roster** and a single frozen runti
 2. Qwen3.6-27B — newer/larger same-family scaling point;
 3. GLM-4.6V-Flash — compact general-purpose peer model;
 4. InternVL3.5-8B-HF — HF-standard InternVL peer model;
-5. MedGemma 1.5 4B IT — 2026 medical-specialist multimodal baseline.
+5. MedGemma 1.5 4B IT — 2026 medical-specialist multimodal baseline;
+6. Gemma 4 26B-A4B IT — 2026 Google multimodal MoE peer model.
 
 Legacy models that require substantially different remote custom-code loading paths are excluded from the primary roster to avoid confounding the scientific comparison with framework-version incompatibilities.
 
