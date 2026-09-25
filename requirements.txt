@@ -1,6 +1,6 @@
 torch>=2.4
 torchvision>=0.19
-transformers==4.57.6
+transformers==5.17.0
 accelerate>=1.2
 modelscope>=1.31.0
 qwen-vl-utils>=0.0.8
