@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 
-TARGET = "4.57.6"
+TARGET = "5.17.0"
 
 
 def installed_version():
@@ -34,7 +34,7 @@ def main():
 
     print(
         "[runtime] Adjusting Transformers automatically. "
-        "This fixes Transformers 5.x incompatibility with InternVL/MiniCPM remote-code models."
+        "This aligns the runtime with the Qwen3.5/Qwen3.6 native multimodal model stack."
     )
     cmd = [
         sys.executable,
