@@ -5,7 +5,13 @@ set -euo pipefail
 # Required environment examples:
 #   MSD_ROOT=/data/MSD/Task10_Colon
 #   CARE_ROOT=/data/CARE
-#   CARE_MAPPING=/data/CARE/care_index.csv   # optional but recommended if filenames do not encode patient/slice
+#   CARE_MAPPING=/data/CARE/care_index.csv      # required if filenames do not prove patient/slice order
+#   CARE_TUMOR_LABEL=...                        # set only after official CARE label semantics are verified
+#   CARE_NORMAL_LABEL=...                       # set only after official CARE label semantics are verified
+#
+# IMPORTANT: before enabling CARE, run:
+#   CARE_SOURCE=/path/to/CARE.zip bash run_data_audit.sh
+# or audit the extracted directory. No CARE label semantics are assumed by default.
 
 MODELS_CONFIG=${MODELS_CONFIG:-configs/models.yaml}
 BENCHMARK_CONFIG=${BENCHMARK_CONFIG:-configs/benchmark.yaml}
@@ -15,12 +21,27 @@ NUM_GPUS=${NUM_GPUS:-4}
 mkdir -p manifests predictions results models artifacts
 
 python scripts/smoke_test.py
-python scripts/index_datasets.py \
-  ${MSD_ROOT:+--msd-root "$MSD_ROOT"} \
-  ${CARE_ROOT:+--care-root "$CARE_ROOT"} \
-  ${CARE_MAPPING:+--care-mapping "$CARE_MAPPING"} \
-  --output manifests/cases.jsonl
 
+INDEX_ARGS=(--output manifests/cases.jsonl)
+if [[ -n "${MSD_ROOT:-}" ]]; then
+  INDEX_ARGS+=(--msd-root "$MSD_ROOT")
+fi
+if [[ -n "${CARE_ROOT:-}" ]]; then
+  if [[ -z "${CARE_TUMOR_LABEL:-}" ]]; then
+    echo "ERROR: CARE_ROOT is set but CARE_TUMOR_LABEL is not." >&2
+    echo "Run scripts/inspect_care.py first and verify official label semantics; do not guess label IDs." >&2
+    exit 2
+  fi
+  INDEX_ARGS+=(--care-root "$CARE_ROOT" --care-tumor-label "$CARE_TUMOR_LABEL")
+  if [[ -n "${CARE_NORMAL_LABEL:-}" ]]; then
+    INDEX_ARGS+=(--care-normal-label "$CARE_NORMAL_LABEL")
+  fi
+  if [[ -n "${CARE_MAPPING:-}" ]]; then
+    INDEX_ARGS+=(--care-mapping "$CARE_MAPPING")
+  fi
+fi
+
+python scripts/index_datasets.py "${INDEX_ARGS[@]}"
 python scripts/build_benchmark.py --cases manifests/cases.jsonl --config "$BENCHMARK_CONFIG" --output "$MANIFEST"
 
 if [[ "${DOWNLOAD_MODELS:-1}" == "1" ]]; then
