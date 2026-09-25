@@ -539,6 +539,13 @@ def audit_zip(path: Path, sample_n: int):
             s: next((n for n in names if rel[n] == f"{s}/{s}_bbox.csv"), None)
             for s in ("train", "test")
         }
+        release_lists = {
+            s: {
+                "txt": next((n for n in names if rel[n] == f"{s}/{s}.txt"), None),
+                "bbox_txt": next((n for n in names if rel[n] == f"{s}/{s}_bbox.txt"), None),
+            }
+            for s in ("train", "test")
+        }
 
         def read_bytes(name):
             return z.read(name)
@@ -594,12 +601,19 @@ def audit_dir(root: Path, sample_n: int):
         s: (f"{s}/{s}_bbox.csv" if (data / s / f"{s}_bbox.csv").is_file() else None)
         for s in ("train", "test")
     }
+    release_lists = {
+        s: {
+            "txt": (f"{s}/{s}.txt" if (data / s / f"{s}.txt").is_file() else None),
+            "bbox_txt": (f"{s}/{s}_bbox.txt" if (data / s / f"{s}_bbox.txt").is_file() else None),
+        }
+        for s in ("train", "test")
+    }
 
     def read_bytes(name):
         return pathmap[name].read_bytes()
 
     report = {
-        "audit_version": 2,
+        "audit_version": 3,
         "source": str(root),
         "source_type": "extracted_directory",
         "detected_dataset_root": str(data),
