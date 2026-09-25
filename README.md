@@ -16,33 +16,46 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ## 0. 一键运行入口
 
-正式实验统一使用根目录：
+正式实验统一使用：
 
 ```bash
 bash run.sh
 ```
 
-`run.sh` 是唯一推荐的完整实验入口，会自动完成：
+你不需要手动：
+
+- 解压两个数据集；
+- 建立病例索引；
+- 手工指定 CARE class 1/2 的唯一语义；
+- 下载模型；
+- 逐个启动模型；
+- 手工评价结果。
+
+`run.sh` 会自动执行：
 
 ```text
-GPU / Python 环境检查
+检查 H20/H100 与 Python 环境
         ↓
-MSD + CARE 病例索引
+自动发现 / 解压 MSD 与 CARE
         ↓
-Benchmark v1 样本生成
+MSD Benchmark 生成一次
+        ↓
+CARE 语义分支 A：tumor=1, normal=2
+        ↓
+CARE 语义分支 B：tumor=2, normal=1
         ↓
 自动下载 configs/models.yaml 中全部模型权重
         ↓
-单卡顺序运行全部模型
+单卡顺序运行全部模型 × 全部实验分支
         ↓
 自动评价
         ↓
-results/
+汇总 results/all_experiments_summary.json
 ```
 
-### Slurm 服务器
+### Slurm 使用原则
 
-本仓库**不提供、不调用**任何：
+本仓库**不提供也不调用任何 Slurm 提交脚本**：
 
 ```text
 sbatch
@@ -50,9 +63,9 @@ srun
 salloc
 ```
 
-脚本或命令。
+都由你自己管理。
 
-Slurm 作业由用户自行提交/申请。进入已经分配 GPU 的作业环境后，仅执行：
+你手动提交/进入已经分配好单张 H20 或 H100 的 Slurm 作业后，只需：
 
 ```bash
 conda activate crcbench
@@ -60,37 +73,135 @@ cd CRCBenchmark
 bash run.sh
 ```
 
-`run.sh` 会尊重 Slurm 已设置的 `CUDA_VISIBLE_DEVICES`，不会自行申请 GPU。
+`run.sh` 会使用作业环境已经设置好的 `CUDA_VISIBLE_DEVICES`。
 
-### 模型权重
+---
 
-`run.sh` 默认在正式推理前执行：
+## 0.1 数据集应该放哪里
 
-```bash
-python scripts/download_models.py \
-  --config configs/models.yaml \
-  --model-root models
-```
-
-即自动下载 **`configs/models.yaml` 中全部模型**。
-
-ModelScope 下载支持已有文件复用；代码还会检查真实权重文件/分片，而不是只检查 `config.json`，因此 Slurm 作业中断后重新运行可继续完成未下载的模型。
-
-### 断点续跑
-
-预测文件按模型持续写入：
+最推荐的方式是**直接放压缩包，不要手动整理内部文件**：
 
 ```text
-predictions/<model>/all.jsonl
+CRCBenchmark/
+└── data/
+    └── raw/
+        ├── MSD/
+        │   └── Task10_Colon.tar
+        └── CARE/
+            └── CARE.zip
 ```
 
-重新执行：
+MSD 文件名不强制必须叫 `Task10_Colon.tar`；只要放在：
+
+```text
+data/raw/MSD/
+```
+
+并且格式属于：
+
+```text
+.zip
+.tar
+.tar.gz
+.tgz
+```
+
+即可。
+
+CARE 推荐保持：
+
+```text
+data/raw/CARE/CARE.zip
+```
+
+执行：
 
 ```bash
 bash run.sh
 ```
 
-时，已经完成的 benchmark item 会自动跳过，因此无需从头推理。
+后，程序自动解压到：
+
+```text
+data/extracted/MSD/
+data/extracted/CARE/
+```
+
+并自动寻找真正的数据根目录：
+
+- MSD：包含 `imagesTr/` 和 `labelsTr/` 的目录；
+- CARE：包含 `test/test_npz/` 和 `test/test.txt` 的目录。
+
+如果 Slurm 作业因时限中断，重新运行 `bash run.sh` 时，已经完整解压的文件会按大小检查后跳过，不会从零重复解压整个 CARE。
+
+CARE 解压后体积较大，建议服务器至少预留 **200–250 GB** 可用磁盘空间用于数据、模型、benchmark artifacts 和预测结果。
+
+### 已经手动解压的数据也支持
+
+如果你已经有：
+
+```text
+data/MSD/
+├── imagesTr/
+└── labelsTr/
+```
+
+程序会直接使用，不再解压 MSD。
+
+也可以显式指定路径：
+
+```bash
+MSD_ROOT=/path/to/Task10_Colon \
+CARE_ROOT=/path/to/DataV6 \
+bash run.sh
+```
+
+---
+
+## 0.2 CARE class 1 / class 2 不再阻塞实验
+
+正式自动实验会同时构建两个 CARE 分支：
+
+### 分支 A
+
+```text
+care_tumor1_normal2
+tumor label  = 1
+normal label = 2
+```
+
+### 分支 B
+
+```text
+care_tumor2_normal1
+tumor label  = 2
+normal label = 1
+```
+
+两套分支使用同一个冻结的 CARE primary cohort：
+
+```text
+test.txt
+81 patients
+6,461 slices
+```
+
+raw label 中的 `3` 仍按官方 U-SAM 规则：
+
+```text
+3 → 2
+```
+
+两套分支都会完整构建并运行相应的 T1–T5。
+
+**重要：**
+
+这两个分支是 semantic sensitivity analysis。不能根据“哪个分支模型成绩更高”来判断真正的 class 语义。
+
+如果后续通过官方标注说明确认了正确映射：
+
+- 正确分支作为 CARE primary result；
+- 另一分支保留为 sensitivity / label-inversion control。
 
 ---
 
@@ -214,26 +325,30 @@ python scripts/index_datasets.py \
 
 ## 2.1 你现在应该做什么
 
-当前不需要再运行 CARE 数据结构 audit。下一步按以下顺序执行：
-
-### 第一步：更新仓库
+### 1. 更新代码
 
 ```bash
 git pull
 ```
 
-### 第二步：正式建立实验环境
-
-现在已经进入真正的 Benchmark 实验阶段，因此建议建立完整环境：
+### 2. 建立一次完整环境
 
 ```bash
 conda create -n crcbench python=3.11 -y
 conda activate crcbench
+
 pip install -r requirements.txt
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
-检查单卡环境：
+### 3. 把压缩包放到固定位置
+
+```text
+data/raw/MSD/<MSD压缩包>
+data/raw/CARE/CARE.zip
+```
+
+### 4. 在你自己提交好的 Slurm 单卡作业中检查 GPU
 
 ```bash
 nvidia-smi
@@ -241,102 +356,20 @@ python scripts/check_gpu.py
 pytest -q
 ```
 
-### 第三步：先跑 MSD，不等待 CARE 标签语义
-
-MSD 标签已经明确，因此可以立即用于验证整套代码：
+### 5. 一次性运行全部正式实验
 
 ```bash
-python scripts/index_datasets.py \
-  --msd-root data/MSD \
-  --output manifests/cases_msd.jsonl
-
-python scripts/build_benchmark.py \
-  --cases manifests/cases_msd.jsonl \
-  --output manifests/benchmark_msd_smoke.jsonl \
-  --limit 3
+bash run.sh
 ```
 
-只下载第一个模型：
-
-```bash
-python scripts/download_models.py \
-  --models qwen35_9b \
-  --model-root models
-```
-
-单卡运行：
-
-```bash
-CUDA_VISIBLE_DEVICES=0 \
-python scripts/run_inference.py \
-  --model qwen35_9b \
-  --manifest manifests/benchmark_msd_smoke.jsonl \
-  --output predictions/qwen35_9b/msd_smoke.jsonl
-```
-
-这一阶段的目标不是得到论文结果，而是确认：
-
-```text
-数据读取
-→ Benchmark 图像生成
-→ 模型加载
-→ VLM 推理
-→ JSON 输出
-```
-
-整条链路可以正常工作。
-
-### 第四步：完成 CARE 标签 1/2 的最终语义确认
-
-CARE 不需要先完整解压，直接从压缩包生成语义审查图：
-
-```bash
-python scripts/inspect_care_label_semantics.py \
-  data/raw/CARE/CARE.zip \
-  --split test \
-  --samples 12
-```
-
-会生成：
-
-```text
-artifacts/care_label_review/
-├── care_test_class_review.jpg
-└── care_test_class_review.json
-```
-
-脚本只显示：
-
-```text
-canonical class 1
-canonical class 2
-```
-
-不会自行声称哪个是肿瘤。
-
-将 `care_test_class_review.jpg` 提交进行人工/文献联合确认后，再冻结：
+不需要再手动填写：
 
 ```text
 CARE_TUMOR_LABEL
 CARE_NORMAL_LABEL
 ```
 
-### 第五步：CARE 最终索引
-
-标签语义确认后：
-
-```bash
-python scripts/index_datasets.py \
-  --msd-root data/MSD \
-  --care-root data/extracted/CARE \
-  --care-splits test \
-  --care-index-source txt \
-  --care-tumor-label <VERIFIED_ID> \
-  --care-normal-label <VERIFIED_ID> \
-  --output manifests/cases.jsonl
-```
-
-之后才生成最终 `benchmark_v1.jsonl` 并冻结。
+因为两种映射都会分别运行。
 
 ---
 
@@ -847,31 +880,37 @@ python scripts/evaluate.py \
 
 ---
 
-# 20. 一键运行
+# 20. 一键运行全部实验
 
-在数据审查完成并确认环境变量后：
+默认：
 
 ```bash
-export MSD_ROOT=/absolute/path/to/MSD
-
-# 只有 CARE 完成审查后再启用：
-# export CARE_ROOT=/absolute/path/to/CARE
-# export CARE_MAPPING=/absolute/path/to/care_index.csv
-# export CARE_TUMOR_LABEL=<VERIFIED_ID>
-# export CARE_NORMAL_LABEL=<VERIFIED_ID>
-# export CARE_SPLITS="test"
-# export CARE_INDEX_SOURCE=txt
-
 bash run.sh
 ```
 
-如果设置了 `CARE_ROOT`，却没有显式设置：
+会运行：
 
 ```text
-CARE_TUMOR_LABEL
+MSD
+CARE tumor=1 / normal=2
+CARE tumor=2 / normal=1
 ```
 
-程序会主动停止，而不是猜测。
+并对 `configs/models.yaml` 中的全部模型完成推理与评价。
+
+临时只调试 MSD：
+
+```bash
+ENABLE_CARE=0 bash run.sh
+```
+
+临时只调试一个模型：
+
+```bash
+ONLY_MODELS="qwen35_9b" bash run.sh
+```
+
+但正式完整实验应保持 `ONLY_MODELS` 为空。
 
 ---
 
@@ -1002,8 +1041,10 @@ run_data_audit.sh
 - [x] 评价框架
 - [x] 根目录 run.sh 全自动实验入口
 - [x] 全模型权重自动下载与断点检查
+- [x] 数据压缩包自动发现与可恢复解压
+- [x] MSD + 两套 CARE 语义分支自动运行
 - [x] CARE.zip v1/v2/v3 审计
-- [ ] CARE 标签医学语义最终确认
+- [x] CARE 两种 class 1/2 语义分支自动实验
 - [x] CARE filename 中 case_id / source slice index 可恢复
 - [x] CARE primary cohort 冻结：test split + test.txt（81 cases / 6,461 slices）
 - [ ] Benchmark v1 manifest 冻结
