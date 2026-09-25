@@ -70,6 +70,17 @@ def infer_case_slice(filename):
     return None
 
 
+def _optional_spacing(row, key):
+    v = row.get(key, None)
+    if v is None or v == "":
+        return float("nan")
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return float("nan")
+    return x if np.isfinite(x) and x > 0 else float("nan")
+
+
 def load_care_npz_series(rows, case_id, split=None, tumor_label_id=None, normal_label_id=None):
     if tumor_label_id is None:
         raise ValueError(
@@ -82,21 +93,39 @@ def load_care_npz_series(rows, case_id, split=None, tumor_label_id=None, normal_
         with np.load(r["npz_path"], allow_pickle=False) as o:
             if "image" not in o or "label" not in o:
                 raise KeyError(f"CARE NPZ missing image/label keys: {r['npz_path']}")
-            images.append(np.asarray(o["image"], dtype=np.float32))
-            labels.append(np.asarray(o["label"]))
+            img = np.asarray(o["image"], dtype=np.float32)
+            raw = np.asarray(o["label"])
+            if not np.all(np.isfinite(raw)):
+                raise ValueError(f"CARE label has non-finite values: {r['npz_path']}")
+            rounded = np.rint(raw)
+            if not np.allclose(raw, rounded):
+                raise ValueError(f"CARE label is not integer-valued: {r['npz_path']}")
+            # Match the official U-SAM CARE loader:
+            # raw label values > 2 are collapsed to canonical class 2.
+            lab = rounded.astype(np.int16)
+            lab[lab > 2] = 2
+            images.append(img)
+            labels.append(lab)
         indices.append(int(r["slice_index"]))
+
     image = np.stack(images)
     label = np.stack(labels)
     mode = "normalized" if image.min() >= -1e-4 and image.max() <= 1.0001 else "preprocessed"
-    dz = float(rows[0].get("slice_spacing", 1.0))
-    dy = float(rows[0].get("pixel_spacing_y", 1.0))
-    dx = float(rows[0].get("pixel_spacing_x", 1.0))
+
+    # The packaged NPZ release does not itself prove physical spacing.
+    # Missing spacing stays NaN instead of being silently replaced by 1 mm.
+    dz = _optional_spacing(rows[0], "slice_spacing")
+    dy = _optional_spacing(rows[0], "pixel_spacing_y")
+    dx = _optional_spacing(rows[0], "pixel_spacing_x")
+
     c = VolumeCase(
         "CARE", case_id, image, label, (dz, dy, dx), split, mode,
         tumor_label_id=int(tumor_label_id),
         normal_label_id=None if normal_label_id is None else int(normal_label_id),
     )
     c.slice_indices = indices
+    c.source_slice_indices = indices
+    c.care_label_rule = "raw_gt2_to_2"
     return c
 
 
@@ -162,6 +191,20 @@ def crop_center_physical(image, center_xy, spacing_yx, fov_mm):
     cx, cy = center_xy
     x1, x2 = int(round(cx)) - sx, int(round(cx)) + sx
     y1, y2 = int(round(cy)) - sy, int(round(cy)) + sy
+    pl, pr = max(0, -x1), max(0, x2 - w)
+    pt, pb = max(0, -y1), max(0, y2 - h)
+    x1, x2 = max(0, x1), min(w, x2)
+    y1, y2 = max(0, y1), min(h, y2)
+    crop = image[y1:y2, x1:x2]
+    return np.pad(crop, ((pt, pb), (pl, pr)), mode="edge") if any((pl, pr, pt, pb)) else crop
+
+
+def crop_center_pixels(image, center_xy, size_px):
+    h, w = image.shape
+    half = max(int(round(float(size_px) / 2)), 1)
+    cx, cy = center_xy
+    x1, x2 = int(round(cx)) - half, int(round(cx)) + half
+    y1, y2 = int(round(cy)) - half, int(round(cy)) + half
     pl, pr = max(0, -x1), max(0, x2 - w)
     pt, pb = max(0, -y1), max(0, y2 - h)
     x1, x2 = max(0, x1), min(w, x2)
