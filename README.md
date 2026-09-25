@@ -79,27 +79,31 @@ bash run.sh
 
 ### Transformers 版本固定
 
-当前 benchmark 将 Transformers 固定为：
+当前 benchmark 将运行时统一到：
 
 ```text
-transformers==4.57.6
+transformers==5.17.0
 ```
 
-原因是 Qwen3.5 需要 4.57 系列能力，而 InternVL3 / MiniCPM-V-4.5 使用 remote custom code；Transformers 5.x 的 tied-weight loader API 会导致旧式 remote model 出现类似：
+原因是 Qwen3.5 / Qwen3.6 已经进入 Transformers 5.x 原生架构支持。此前为了兼容旧版 InternVL3 / MiniCPM remote custom code 将环境降到 4.57.6，会直接导致：
 
 ```text
-AttributeError: ... has no attribute 'all_tied_weights_keys'
+ValueError: model type qwen3_5 is not recognized
 ```
 
-`run.sh` 在正式实验前会自动检查版本。如果当前 conda 环境装的是 Transformers 5.x，默认会自动调整到 4.57.6，然后继续实验。
+因此本项目不再维护“新 Qwen + 旧 custom-code VLM”混合运行环境，而改成**Transformers 5.17 原生多模态模型优先**。
 
-如果不希望脚本自动修改环境，可设置：
+`run.sh` 会在正式实验前自动检查版本；如果不是 5.17.0，默认自动调整：
+
+```bash
+python scripts/bootstrap_runtime.py
+```
+
+如果不希望脚本自动修改环境：
 
 ```bash
 CRCBENCH_AUTO_FIX_RUNTIME=0 bash run.sh
 ```
-
-此时版本不匹配会直接停止并提示手动安装。
 
 ---
 
@@ -415,28 +419,38 @@ CARE_NORMAL_LABEL
 
 ## 4. 计划评测的开放权重模型
 
-当前 `configs/models.yaml` 包含：
+模型集合已更新为 **Qwen3.5 时代及之后、优先使用 Transformers 原生 image-text-to-text 接口** 的版本：
 
-| Key | 模型 |
-|---|---|
-| `qwen35_9b` | Qwen3.5-9B |
-| `internvl3_8b` | InternVL3-8B |
-| `minicpm_v_45` | MiniCPM-V-4.5 |
-| `qwen25vl_7b` | Qwen2.5-VL-7B-Instruct |
-| `medgemma_4b_it` | MedGemma-4B-IT |
-| `lingshu_7b` | Lingshu-7B |
+| Key | 模型 | 角色 |
+|---|---|---|
+| `qwen35_9b` | Qwen3.5-9B | 主要基准模型 |
+| `qwen36_27b` | Qwen3.6-27B | 更新一代、更大规模 Qwen |
+| `glm46v_flash` | GLM-4.6V-Flash | 约 9B 级通用 VLM 对照 |
+| `internvl35_8b_hf` | InternVL3.5-8B-HF | InternVL 系列、HF 标准格式 |
+| `medgemma15_4b` | MedGemma 1.5 4B IT | 2026 医疗多模态专用模型 |
 
-当前默认运行环境调整为**单张 NVIDIA H20 或 H100**。
+旧模型：
 
-- 默认只使用 1 张 GPU；
-- 模型保持 BF16，不使用量化；
-- 当前 4B–9B 级模型按单卡顺序运行；
-- 多 GPU 分片仍保留为可选功能，但不再是默认实验条件；
-- 不进行任务特异性训练或微调。
+```text
+InternVL3-8B
+MiniCPM-V-4.5
+Qwen2.5-VL-7B
+MedGemma-4B-IT
+Lingshu-7B
+```
 
-模型权重默认通过 **ModelScope** 下载到本地后运行。
+已从正式模型组中移除。主要原因不是这些模型完全不可用，而是它们与 Qwen3.5 所需的现代 Transformers runtime 混用时，需要维护多套 remote custom-code adapter，降低 benchmark 的可复现性和工程稳定性。
 
----
+当前默认运行环境：
+
+- 单张 NVIDIA H20 或 H100；
+- BF16；
+- 不使用量化；
+- 模型顺序运行；
+- 全部权重仍通过 ModelScope 自动下载；
+- 正式实验使用统一的 Transformers 5.17 runtime。
+
+Qwen3.6-27B BF16 权重约 56 GB，是当前模型组里显存占用最高的一项；H20 96 GB 或 H100 80 GB 均作为目标硬件，实际运行前仍由 adapter smoke test 检查是否可加载。
 
 ## 5. 推荐环境
 
@@ -797,11 +811,10 @@ bash run.sh
 
 ```text
 qwen35_9b
-internvl3_8b
-minicpm_v_45
-qwen25vl_7b
-medgemma_4b_it
-lingshu_7b
+qwen36_27b
+glm46v_flash
+internvl35_8b_hf
+medgemma15_4b
 ```
 
 权重默认保存在：
