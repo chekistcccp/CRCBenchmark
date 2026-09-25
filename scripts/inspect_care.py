@@ -443,9 +443,25 @@ def finalize(report):
         raw_vals.update(na.get("observed_raw_label_values",[]))
         canonical_vals.update(na.get("canonical_label_values_after_usam_rule",[]))
 
+    primary_test=report["cross_split_by_index_source"]["txt"]
+    report["primary_benchmark_care"]={
+        "split":"test",
+        "index_source":"txt",
+        "patient_count":primary_test["test_case_count"],
+        "slice_count":primary_test["test_record_count"],
+        "matches_published_test_cases":primary_test["test_case_count"]==REFERENCE["paper_test_cases"],
+        "matches_published_test_slices":primary_test["test_record_count"]==REFERENCE["paper_test_pairs"],
+        "rationale":"The released train cohort does not reconcile with published totals; test.txt exactly reproduces the published 81-case / 6,461-slice test cohort and covers all released test NPZ files.",
+    }
+
     report["safety"]={
         "label_semantics_verified":False,
-        "patient_slice_mapping_verified":False,
+        "patient_slice_mapping_verified_for_primary_test":(
+            primary_test["test_parse_fraction"]==1.0
+            and primary_test["test_case_count"]==REFERENCE["paper_test_cases"]
+        ),
+        "physical_spacing_verified":False,
+        "full_volume_continuity_verified":False,
         "observed_raw_label_values_from_samples":sorted(raw_vals),
         "canonical_label_values_after_usam_rule":sorted(canonical_vals),
         "filename_mapping_candidate":bool(fracs) and all(x==1.0 for x in fracs),
@@ -459,18 +475,18 @@ def finalize(report):
     }
 
     report["next_steps"]=[
-        "Compare train.txt/test.txt, *_bbox.txt, bbox CSV, and all NPZ using cross_split_by_index_source.",
-        "Freeze the primary CARE index source only after selecting the source that best matches the published 33,024 slice pairs and 398 patients.",
+        "Primary CARE cohort is frozen to test.txt: 81 cases and 6,461 slices.",
         "Do not assign normal/tumor meaning to canonical label IDs 1 and 2 until verified from official annotation evidence.",
         "Treat raw CARE label 3 according to the official U-SAM preprocessing rule: collapse raw values >2 to canonical class 2.",
-        "CARE T1 is structurally possible because filenames preserve case_id and slice_index.",
-        "CARE T3 should use only local consecutive source-slice windows; do not require every retained slice in a patient to be globally contiguous.",
+        "Use only locally consecutive source-slice windows for CARE T3; full-volume continuity and physical spacing are not assumed.",
         "Use CARE image arrays as packaged; do not apply an HU window unless original HU semantics are independently verified.",
+        "Use CARE train and bbox-defined subsets only for development or supplementary sensitivity analyses.",
     ]
 
     # Remove internal helper fields before serialization.
     for split in ("train","test"):
         report["splits"][split].pop("_npz_case_ids",None)
+        report["splits"][split]["filename_structure"].pop("case_ids",None)
         csv_info=report["splits"][split].get("bbox_csv")
         if csv_info:
             csv_info.pop("_ids",None)
