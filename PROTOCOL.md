@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.2
+# ColoGround-Bench Protocol v1.3
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -17,6 +17,19 @@ ColoGround-Bench is a training-free benchmark for open vision-language models on
 MSD is treated as a true 3D CT dataset with NIfTI image/mask pairs. It can support T1, T2, T3 and T5 directly after standard QC. Foreground tumor label `1` is defined by the task segmentation mask.
 
 ### CARE public packaged release
+
+### Current release audit findings
+
+The first read-only audit of the downloaded CARE archive found a `DataV6` package with 26,656 train NPZ files and 6,461 test NPZ files. Every NPZ filename was conservatively parseable as `case_id + slice_index`, yielding 318 train case IDs and 81 test case IDs. Sampled images were 512 × 512 with values in [0,1], and sampled raw masks contained values 0,1,2,3.
+
+The official U-SAM CARE dataloader canonicalizes the released masks with `mask[mask > 2] = 2`; CRCBenchmark now mirrors this preprocessing rule, so raw value 3 is merged into canonical class 2 before benchmark construction. The medical meaning of canonical classes 1 and 2 is still kept explicit and must be verified before semantic CARE tracks are frozen.
+
+The archive-level sequence audit showed that not every retained patient series is globally contiguous. This is compatible with the CARE paper's statement that slices not containing the rectum were removed. Therefore CARE T3 no longer requires an entire patient sequence to be contiguous; only local windows whose original source slice indices are consecutive are eligible.
+
+The observed train NPZ count differs from the paper-reported 26,563 train pairs, while the test count matches the reported 6,461. CRCBenchmark therefore uses the official bbox CSV membership as the default CARE inclusion list and treats extra unreferenced NPZ files as audit items rather than silently adding them to the benchmark.
+
+A v2 audit must still be reviewed before benchmark freeze to determine train/test case overlap, exact CSV↔NPZ set differences, and the content of small metadata files included in the archive.
+
 
 The CARE release used by the public U-SAM loader is treated conservatively as preprocessed 2D NPZ image-label pairs until the actual downloaded archive has been audited.
 
@@ -57,7 +70,7 @@ slice_spacing,pixel_spacing_y,pixel_spacing_x
 
 If filenames do not fully prove patient identity and ordering, the indexer fails with an explicit error instead of silently fabricating 3D groups.
 
-If no verified mapping exists, CARE T1/T3 remain disabled and individual slices must not be treated as independent patients in primary statistical inference.
+For the currently audited release, filename parsing provides a strong patient/slice mapping candidate. CARE T1 becomes eligible after label semantics are verified. CARE T3 uses only locally consecutive source-slice windows; gaps elsewhere in the same retained patient series do not invalidate an otherwise consecutive local window. Individual slices are never treated as independent patients in primary statistical inference.
 
 ## CARE image intensity handling
 
