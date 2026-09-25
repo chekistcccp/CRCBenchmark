@@ -47,44 +47,89 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ## 2. 当前 CARE 实际审查结论
 
-第一次对实际下载的 `CARE.zip` 审查已经完成，当前 release 显示：
+CARE 已完成两轮只读审查。v2 对真实下载的 `CARE.zip` 得到以下事实：
 
-- 压缩包根目录为 `DataV6`；
-- train NPZ：**26,656**；
-- test NPZ：**6,461**；
-- 文件名可以 **100%** 解析为 `case_id + slice_index`；
-- train 可解析出 **318** 个 case ID；
-- test 可解析出 **81** 个 case ID；
-- 所有抽样图像均为 `512 × 512`；
-- 图像值域为 `[0, 1]`，因此 CARE 按已预处理图像使用，而不是重新执行 HU window；
-- 原始 label 抽样观察到 `0/1/2/3`；
-- 官方 U-SAM dataloader 在进入三分类训练前执行 `mask[mask > 2] = 2`，因此本仓库将 raw label `3` 按同一规则归并到 canonical class `2`；
-- **canonical class 1/2 的医学语义仍需最终确认后才写死**；
-- train 中约 89.6% 的患者级序列全局连续，test 中约 95.1% 全局连续。由于官方论文明确说明删除了“不含直肠”的切片，因此本项目不再要求整个患者序列全局连续，而只在 T3 中使用能够证明 source slice index 连续的局部窗口；
-- 当前 archive 的 train NPZ 数量比论文报告的 26,563 多 93 个，而 test 数量与论文的 6,461 一致。正式 benchmark 默认跟随官方 U-SAM 的 CSV 索引，不自动纳入未被 CSV 引用的额外 NPZ。
+- 数据根目录：`DataV6`；
+- 全部 NPZ：train **26,656**，test **6,461**；
+- 所有 NPZ 文件名均可 100% 解析为 `case_id + slice_index`；
+- 按“全部 NPZ”统计：train **318** 个 case ID、test **81** 个 case ID；
+- train/test case ID **没有重叠**，因此全部 NPZ 实际形成 **399 个唯一 case ID**，与论文所述总患者数 398 不一致；
+- CARE 论文摘要写 317 train + 81 test，而 Methods 段又写 318 train + 81 test，因此正式 Benchmark 不用“全部 NPZ case 数”自行修正论文，而是继续核对 release 自带的正式 slice list；
+- train 中 318/318 病例均至少存在连续 9 层窗口，test 中 81/81 亦如此，因此 CARE 在结构上可以支持局部 T3；
+- 图像均为预处理后的 `512×512`、值域 `[0,1]`，不重新作为 HU 执行 CT window；
+- raw label 抽样值为 `0/1/2/3`；按照官方 U-SAM dataloader，`label > 2` 会被并入 canonical class 2，因此本项目同样采用 `3 → 2`；
+- canonical class 1/2 的**医学含义仍需独立确认**，目前代码不会默认把二者写死为 normal/tumor。
 
-因此 CARE 的定位从“无法判断是否能恢复患者序列”更新为：
+v2 还确认：`bbox.csv` **并不覆盖全部 NPZ**。
 
-> **患者 ID 和原始 slice index 具有很强的可恢复证据；T1 在标签语义确认后可以纳入 CARE，T3 则仅使用真实连续的局部 slice window。**
+- train `train_bbox.csv`：26,537 条，全部都能找到对应 NPZ，但另有 **119 个 NPZ 不在 CSV 中**；
+- test `test_bbox.csv`：6,424 条，全部都能找到对应 NPZ，但另有 **37 个 NPZ 不在 CSV 中**。
 
-在冻结 Benchmark v1 前，还需要运行新版 audit v2，额外确认：
-
-1. train/test 是否存在重复 case ID；
-2. CSV 与 NPZ 的精确集合差异；
-3. 4 个 TXT 和其他小型 metadata 文件中是否包含额外映射说明；
-4. canonical class 1/2 的最终医学语义。
-
-重新运行：
-
-```bash
-CARE_SOURCE=data/raw/CARE/CARE.zip bash run_data_audit.sh
-```
-
-默认输出：
+因此，现在不能再简单把 `bbox.csv` 当作 ColoGround-Bench 的唯一正式 slice list。压缩包同时提供：
 
 ```text
-manifests/care_audit_v2.json
+train/train.txt
+train/train_bbox.txt
+train/train_bbox.csv
+
+test/test.txt
+test/test_bbox.txt
+test/test_bbox.csv
 ```
+
+其中 `train.txt/test.txt` 很可能更接近论文所述的完整 image-label pair 列表，但必须先用 **audit v3** 精确比较四套索引来源：
+
+1. `txt`
+2. `bbox_txt`
+3. `bbox_csv`
+4. 全部 `npz`
+
+新版审查会同时比较：
+
+- train/test slice 数；
+- patient 数；
+- train/test patient overlap；
+- 是否与论文 26,563 + 6,461 slice pairs 对齐；
+- 是否与论文 398 patients 对齐；
+- 每个列表是否引用缺失 NPZ；
+- 不同列表相对于全部 NPZ 的增删集合。
+
+运行：
+
+```bash
+git pull
+
+CARE_SOURCE=data/raw/CARE/CARE.zip \
+bash run_data_audit.sh
+```
+
+默认生成：
+
+```text
+manifests/care_audit_v3.json
+```
+
+### CARE 正式索引安全门
+
+正式索引器现在支持：
+
+```text
+--care-index-source txt
+--care-index-source bbox_csv
+--care-index-source all_npz
+```
+
+默认：
+
+```text
+--care-index-source auto
+```
+
+但当 `train.txt` 与 `train_bbox.csv` 内容不同，`auto` 会**主动停止**，不会替研究者静默选择。只有 v3 审查完成后，才把 primary CARE index source 冻结到协议中。
+
+当前 CARE 的科学状态可以概括为：
+
+> **患者 ID / source slice index 已具有很强的可恢复证据，T1 与局部 T3 在结构上可行；但正式纳入哪些 slice，以及 canonical class 1/2 的医学语义，还需最后一次冻结。**
 
 ---
 
@@ -218,8 +263,8 @@ CARE_SOURCE=data/raw/CARE/CARE.zip bash run_data_audit.sh
 ```bash
 python scripts/inspect_care.py \
   data/raw/CARE/CARE.zip \
-  --sample-n 20 \
-  --output manifests/care_audit.json
+  --sample-n 50 \
+  --output manifests/care_audit_v3.json
 ```
 
 该脚本是**只读审查工具**：
@@ -587,7 +632,7 @@ CARE_TUMOR_LABEL
             run_data_audit.sh
                     │
                     ▼
-          manifests/care_audit.json
+          manifests/care_audit_v3.json
                     │
                     ▼
       确认 CARE label 实际含义
@@ -619,7 +664,7 @@ CARE_SOURCE=data/raw/CARE/CARE.zip bash run_data_audit.sh
 然后重点检查：
 
 ```text
-manifests/care_audit.json
+manifests/care_audit_v3.json
 ```
 
 ---
@@ -697,8 +742,9 @@ run_data_audit.sh
 - [x] 多模型配置
 - [x] 4-GPU 分片推理框架
 - [x] 评价框架
-- [ ] 实际 CARE.zip 审计
+- [x] CARE.zip v1/v2 审计
 - [ ] CARE 标签医学语义最终确认
-- [ ] CARE patient/slice mapping 最终确认
+- [x] CARE filename 中 case_id / source slice index 可恢复
+- [ ] CARE primary index source（txt / bbox_csv / all_npz）最终冻结
 - [ ] Benchmark v1 manifest 冻结
 - [ ] 全模型正式实验
