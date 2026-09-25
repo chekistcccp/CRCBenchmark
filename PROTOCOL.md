@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.4
+# ColoGround-Bench Protocol v1.5
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -18,28 +18,35 @@ MSD is treated as a true 3D CT dataset with NIfTI image/mask pairs. It can suppo
 
 ### CARE public packaged release
 
-### Current release audit findings
+### CARE v3 audit findings and frozen primary cohort
 
-Two read-only audits have now been completed on the downloaded CARE release.
+The released CARE archive contains 26,656 train NPZ files and 6,461 test NPZ files. All filenames are parseable as `case_id + source_slice_index`. Across all NPZ files this yields 318 train case IDs and 81 test case IDs with no overlap, i.e. 399 unique case IDs. This does not exactly reproduce the paper's reported total of 398 patients.
 
-Audit v2 found 26,656 train NPZ files and 6,461 test NPZ files. All NPZ filenames were parseable as `case_id + slice_index`. Across all NPZ files this yielded 318 train case IDs and 81 test case IDs, with no train/test ID overlap and 399 unique case IDs in total. This does not exactly match the paper's stated total of 398 patients. The paper itself also contains a split-count inconsistency: the abstract reports 317 training + 81 testing patients, whereas the Methods section reports 318 + 81.
+Audit v3 reconciled all release-provided index sources:
 
-All 318 train cases and all 81 test cases contain at least one locally consecutive 9-slice run. Therefore CARE can support local volumetric-consistency testing even though some retained patient series contain global gaps after irrelevant rectal-free slices were removed.
+| Index source | Train slices | Test slices | Train cases | Test cases | Unique cases |
+|---|---:|---:|---:|---:|---:|
+| all NPZ | 26,656 | 6,461 | 318 | 81 | 399 |
+| `txt` | 26,656 | 6,461 | 318 | 81 | 399 |
+| `bbox_txt` | 26,537 | 6,424 | 318 | 81 | 399 |
+| `bbox_csv` | 26,537 | 6,424 | 318 | 81 | 399 |
 
-The packaged images are 512 × 512 with values in [0,1]. Raw sampled labels contain values 0,1,2,3. CRCBenchmark mirrors the official U-SAM rule `mask[mask > 2] = 2`, so raw value 3 is merged into canonical class 2. The semantic meaning of canonical classes 1 and 2 remains an explicit unresolved gate.
+No full train+test source simultaneously reproduces the paper-reported 33,024 slice pairs and 398 patients. The v3 scorer therefore no longer reports a unique "best" source when all candidates tie.
 
-Audit v2 also showed that bbox CSV membership is a strict subset of the NPZ archive: train bbox CSV contains 26,537 entries while 119 train NPZ files are not referenced; test bbox CSV contains 6,424 entries while 37 test NPZ files are not referenced. Every bbox CSV entry has a corresponding NPZ.
+For the **primary ColoGround-Bench CARE cohort**, the protocol is now frozen to:
 
-Because the release also contains `train.txt/test.txt` and `*_bbox.txt`, bbox CSV is no longer treated as the automatically preferred primary cohort for ColoGround-Bench. Audit v3 now compares four candidate index sources:
+```text
+CARE split        = test
+CARE index source = test.txt
+patients          = 81
+slices            = 6,461
+```
 
-1. `txt`;
-2. `bbox_txt`;
-3. `bbox_csv`;
-4. all NPZ files.
+This choice is reproducible and matches the published test-cohort size exactly. `test.txt` contains 6,461 unique entries, every entry has a corresponding NPZ, and it covers all 6,461 NPZ files in the released test directory. All 81 test cases contain at least one locally consecutive 9-slice window, so local T3 evaluation remains feasible.
 
-The primary CARE index source will be frozen only after comparing slice counts, patient counts, train/test overlap, missing NPZ references, and alignment with the paper-reported 26,563 + 6,461 slice pairs and 398 patients.
+The released train cohort is **not included in the primary benchmark** because its released slice/patient counts do not reconcile cleanly with the publication. Train data may be used only for development, code debugging, or supplementary sensitivity analysis. The 6,424-slice bbox-defined test subset may likewise be reported as a supplementary sensitivity cohort, but not as the primary CARE result.
 
-The indexer therefore supports an explicit `--care-index-source` argument. Its default `auto` mode intentionally refuses to choose when release lists disagree.
+The packaged images are 512 × 512 with values in [0,1]. Raw sampled labels include values 0,1,2,3. CRCBenchmark mirrors the official U-SAM preprocessing rule `mask[mask > 2] = 2`, producing canonical labels 0,1,2. The medical meaning of canonical classes 1 and 2 remains an explicit semantic gate until independently verified.
 
 The CARE release used by the public U-SAM loader is treated conservatively as preprocessed 2D NPZ image-label pairs until the actual downloaded archive has been audited.
 
