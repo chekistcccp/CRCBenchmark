@@ -1,6 +1,6 @@
-# ColoGround-Bench Protocol v1.1
+# ColoGround-Bench Protocol v1.2
 
-ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, or synthetic clinical labels are created.
+ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
 ## Tracks
 
@@ -9,6 +9,77 @@ ColoGround-Bench is a training-free benchmark for open vision-language models on
 3. **T3 Volumetric Consistency** — identify tumor-positive slices around entry/exit boundaries. Primary metric: patient-level Slice F1.
 4. **T4 CARE Hard Negative** — same-patient tumor ROI versus normal rectal wall ROI. Primary metric: pairwise accuracy and swap consistency.
 5. **T5 Counterfactual Faithfulness** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. Primary continuous metric is the Faithfulness Gap when candidate likelihoods are available; a categorical flip-based equivalent is retained for custom models whose forward method does not expose stable likelihoods.
+
+## Dataset-specific roles
+
+### MSD Task10 Colon
+
+MSD is treated as a true 3D CT dataset with NIfTI image/mask pairs. It can support T1, T2, T3 and T5 directly after standard QC. Foreground tumor label `1` is defined by the task segmentation mask.
+
+### CARE public packaged release
+
+The CARE release used by the public U-SAM loader is treated conservatively as preprocessed 2D NPZ image-label pairs until the actual downloaded archive has been audited.
+
+The benchmark must not assume any of the following without evidence:
+
+- that CARE NPZ pixel values are original HU;
+- that foreground value `1` is normal wall;
+- that foreground value `2` is tumor;
+- that numeric NPZ filenames correspond to patient or slice order;
+- that adjacent files form a contiguous 3D volume.
+
+CARE activation therefore follows a mandatory two-gate procedure.
+
+### Gate 1 — label semantics
+
+Run `scripts/inspect_care.py` and verify the label mapping against the official release documentation/examples. CARE indexing requires explicit `--care-tumor-label`; T4 additionally requires an explicit verified normal-wall label.
+
+No default CARE foreground semantics are embedded in the code.
+
+### Gate 2 — patient/slice mapping
+
+T1/T3 and all patient-level CARE statistics require a proven `case_id` and `slice_index` mapping.
+
+The mapping may come from:
+
+1. a filename convention that is explicitly verified and parsed for every included NPZ; or
+2. an external `care_index.csv` containing at least:
+
+```text
+case_id,slice_index,npz_path,split
+```
+
+Optional physical-spacing fields may be added:
+
+```text
+slice_spacing,pixel_spacing_y,pixel_spacing_x
+```
+
+If filenames do not fully prove patient identity and ordering, the indexer fails with an explicit error instead of silently fabricating 3D groups.
+
+If no verified mapping exists, CARE T1/T3 remain disabled and individual slices must not be treated as independent patients in primary statistical inference.
+
+## CARE image intensity handling
+
+MSD uses HU windowing.
+
+CARE packaged NPZ images are used as provided. If arrays are in `[0,1]`, they are directly mapped to display intensity. If they are preprocessed but not normalized, robust display scaling is used. HU windowing is not applied to CARE unless original HU semantics are independently demonstrated.
+
+## Read-only CARE audit
+
+Before extraction, a downloaded archive can be inspected using:
+
+```bash
+python scripts/inspect_care.py data/raw/CARE/CARE.zip --output manifests/care_audit.json
+```
+
+The audit reads archive members, bbox CSV files and a deterministic sample of NPZ files without extracting the full archive. It reports observed structures and values but intentionally marks:
+
+- `label_semantics_verified = false`;
+- `patient_slice_mapping_verified = false`;
+- `care_3d_tracks_enabled = false`.
+
+These flags are scientific safeguards, not parser failures.
 
 ## Non-negotiable evaluation rules
 
@@ -21,28 +92,10 @@ ColoGround-Bench is a training-free benchmark for open vision-language models on
 - All models run the same frozen benchmark manifest.
 - Invalid responses are retained as failures and separately counted.
 - No aggregate weighted leaderboard score is created.
+- CARE label semantics are never guessed from numeric IDs alone.
+- CARE 3D continuity is never inferred from file order alone.
+- MSD and CARE results are reported separately where their representations or eligible tracks differ; they are not naively pooled into a pseudo cross-center score.
 
-## Data notes
+## Current model scope
 
-MSD is expected as `imagesTr/*.nii.gz` and `labelsTr/*.nii.gz`.
-
-The public CARE training code uses `train/train_npz`, `test/test_npz`, and bbox CSV files. The repository attempts to infer `case_id` and `slice_index` from filenames ending in `_<slice>` or `-<slice>`. If the downloaded release uses another naming scheme, provide a CSV with:
-
-```text
-case_id,slice_index,npz_path,split,slice_spacing,pixel_spacing_y,pixel_spacing_x
-```
-
-T3 is skipped for CARE cases when patient-level slice ordering cannot be proven contiguous. This prevents fabricating 3D continuity from shuffled/filtered 2D pairs.
-
-## Models
-
-All checkpoints are downloaded **only via ModelScope** with `modelscope.snapshot_download`, then loaded from local paths by Transformers:
-
-- `Qwen/Qwen3.5-9B`
-- `OpenGVLab/InternVL3-8B`
-- `OpenBMB/MiniCPM-V-4_5`
-- `Qwen/Qwen2.5-VL-7B-Instruct`
-- `google/medgemma-4b-it`
-- `lingshu-medical-mllm/Lingshu-7B`
-
-Qwen3.8-27B is intentionally excluded.
+The benchmark is designed for open-weight VLMs runnable on the target 4 × RTX 3090 system. Model choice can be updated independently of the frozen dataset protocol; the benchmark, not a specific Qwen version, is the primary research object.
