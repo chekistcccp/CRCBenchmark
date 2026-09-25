@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.8
+# ColoGround-Bench Protocol v1.9
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -128,7 +128,19 @@ These flags are scientific safeguards, not parser failures.
 
 ## Current model scope
 
-The benchmark is designed for open-weight VLMs runnable on a single NVIDIA H20 or H100 GPU. BF16 is the default inference precision and task-specific quantization is not part of the primary protocol. Models are executed sequentially on one GPU by default; optional multi-GPU data sharding remains an engineering acceleration only and does not change the frozen benchmark samples or metrics. Model choice can be updated independently of the frozen dataset protocol; the benchmark, not a specific Qwen version, is the primary research object.
+The benchmark uses a **Qwen3.5-era modern VLM roster** and a single frozen runtime based on Transformers 5.17.0. The primary model set is:
+
+1. Qwen3.5-9B — primary contemporary baseline;
+2. Qwen3.6-27B — newer/larger same-family scaling point;
+3. GLM-4.6V-Flash — compact general-purpose peer model;
+4. InternVL3.5-8B-HF — HF-standard InternVL peer model;
+5. MedGemma 1.5 4B IT — 2026 medical-specialist multimodal baseline.
+
+Legacy models that require substantially different remote custom-code loading paths are excluded from the primary roster to avoid confounding the scientific comparison with framework-version incompatibilities.
+
+The benchmark is designed for open-weight VLMs runnable on a single NVIDIA H20 or H100 GPU. BF16 is the default inference precision and task-specific quantization is not part of the primary protocol. Models are executed sequentially in independent Python processes. The benchmark manifest and metrics remain fixed across models.
+
+Model choice can still be updated in future benchmark revisions, but a published experiment must report the exact model IDs, revisions, Transformers version, and ModelScope snapshot source used.
 
 
 ## Execution and scheduler policy
