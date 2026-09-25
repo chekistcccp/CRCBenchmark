@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.7
+# ColoGround-Bench Protocol v1.8
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -146,3 +146,33 @@ The primary hardware protocol is one NVIDIA H20 or H100 GPU with BF16 inference.
 Before inference, `run.sh` automatically downloads every model listed in `configs/models.yaml` through ModelScope. Existing complete snapshots are reused; incomplete sharded checkpoints are detected and resumed/re-fetched. The official full experiment does not require separate manual model-download commands.
 
 Inference outputs are checkpointed incrementally at item level. Re-running `run.sh` after preemption reuses completed predictions and continues unfinished items. A debugging-only `ONLY_MODELS` override is supported, but the primary benchmark protocol runs all configured models.
+
+
+## CARE unresolved-label sensitivity protocol
+
+Because the released CARE data expose canonical foreground labels 1 and 2 but the available release documentation does not yet provide a sufficiently explicit numeric-to-medical-class statement, the computational protocol does not block on a single assumed mapping.
+
+Two complete, pre-specified CARE semantic branches are constructed from the same frozen 81-patient / 6,461-slice test cohort:
+
+1. `care_tumor1_normal2`: canonical class 1 is treated as tumor and class 2 as normal rectal tissue;
+2. `care_tumor2_normal1`: canonical class 2 is treated as tumor and class 1 as normal rectal tissue.
+
+Raw CARE label values greater than 2 are first canonicalized with the official U-SAM rule `label > 2 -> 2`. Each semantic branch is built into a separate benchmark manifest and separate artifact directory, and every configured VLM is evaluated on both branches.
+
+The two branches are semantic sensitivity analyses, not competing clinical ground truths. The correct medical class mapping must not be selected on the basis of model accuracy, grounding, or faithfulness performance. If authoritative annotation evidence later establishes the numeric mapping, the matching branch becomes the primary CARE result and the inverted branch is retained as a label-inversion sensitivity/control analysis.
+
+MSD is evaluated only once and is not duplicated across the two CARE branches.
+
+
+## Automatic data preparation
+
+The canonical `run.sh` accepts raw dataset archives under:
+
+```text
+data/raw/MSD/
+data/raw/CARE/CARE.zip
+```
+
+Supported MSD/CARE archive formats for automatic extraction are ZIP, TAR, TAR.GZ, and TGZ. Data are extracted under `data/extracted/`, and the code recursively locates the actual MSD root containing `imagesTr/labelsTr` and CARE root containing `test/test_npz/test.txt`.
+
+Extraction is resumable at the file level: an already extracted file with the expected uncompressed size is skipped. This is intended for preemptible/time-limited Slurm jobs.
