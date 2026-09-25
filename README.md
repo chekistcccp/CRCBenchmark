@@ -77,6 +77,32 @@ bash run.sh
 
 ---
 
+### Transformers 版本固定
+
+当前 benchmark 将 Transformers 固定为：
+
+```text
+transformers==4.57.6
+```
+
+原因是 Qwen3.5 需要 4.57 系列能力，而 InternVL3 / MiniCPM-V-4.5 使用 remote custom code；Transformers 5.x 的 tied-weight loader API 会导致旧式 remote model 出现类似：
+
+```text
+AttributeError: ... has no attribute 'all_tied_weights_keys'
+```
+
+`run.sh` 在正式实验前会自动检查版本。如果当前 conda 环境装的是 Transformers 5.x，默认会自动调整到 4.57.6，然后继续实验。
+
+如果不希望脚本自动修改环境，可设置：
+
+```bash
+CRCBENCH_AUTO_FIX_RUNTIME=0 bash run.sh
+```
+
+此时版本不匹配会直接停止并提示手动安装。
+
+---
+
 ## 0.1 数据集应该放哪里
 
 最推荐的方式是**直接放压缩包，不要手动整理内部文件**：
@@ -337,7 +363,7 @@ git pull
 conda create -n crcbench python=3.11 -y
 conda activate crcbench
 
-pip install -r requirements.txt
+pip install -U -r requirements.txt
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
