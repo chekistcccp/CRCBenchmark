@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v1.6
+# ColoGround-Bench Protocol v1.7
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -129,3 +129,20 @@ These flags are scientific safeguards, not parser failures.
 ## Current model scope
 
 The benchmark is designed for open-weight VLMs runnable on a single NVIDIA H20 or H100 GPU. BF16 is the default inference precision and task-specific quantization is not part of the primary protocol. Models are executed sequentially on one GPU by default; optional multi-GPU data sharding remains an engineering acceleration only and does not change the frozen benchmark samples or metrics. Model choice can be updated independently of the frozen dataset protocol; the benchmark, not a specific Qwen version, is the primary research object.
+
+
+## Execution and scheduler policy
+
+The canonical experiment entry point is:
+
+```bash
+bash run.sh
+```
+
+The repository is intentionally scheduler-agnostic. `run.sh` never calls `sbatch`, `srun`, `salloc`, or any other Slurm command. GPU/node allocation and job submission are performed manually by the user or institutional scheduler configuration.
+
+The primary hardware protocol is one NVIDIA H20 or H100 GPU with BF16 inference. All configured models are executed sequentially in separate Python processes on the GPU allocated by the surrounding Slurm job.
+
+Before inference, `run.sh` automatically downloads every model listed in `configs/models.yaml` through ModelScope. Existing complete snapshots are reused; incomplete sharded checkpoints are detected and resumed/re-fetched. The official full experiment does not require separate manual model-download commands.
+
+Inference outputs are checkpointed incrementally at item level. Re-running `run.sh` after preemption reuses completed predictions and continues unfinished items. A debugging-only `ONLY_MODELS` override is supported, but the primary benchmark protocol runs all configured models.
