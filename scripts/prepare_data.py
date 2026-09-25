@@ -32,6 +32,8 @@ def extract_zip(path: Path, dest: Path):
                 continue
             target = safe_target(dest, info.filename)
             target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists() and target.is_file() and target.stat().st_size == info.file_size:
+                continue
             with z.open(info) as src, open(target, "wb") as dst:
                 shutil.copyfileobj(src, dst, length=16 * 1024 * 1024)
 
@@ -39,10 +41,20 @@ def extract_zip(path: Path, dest: Path):
 def extract_tar(path: Path, dest: Path):
     with tarfile.open(path, "r:*") as t:
         for member in t.getmembers():
-            if member.issym() or member.islnk():
+            if member.isdir():
+                safe_target(dest, member.name).mkdir(parents=True, exist_ok=True)
                 continue
-            safe_target(dest, member.name)
-        t.extractall(dest, members=[m for m in t.getmembers() if not (m.issym() or m.islnk())])
+            if member.issym() or member.islnk() or not member.isfile():
+                continue
+            target = safe_target(dest, member.name)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if target.exists() and target.is_file() and target.stat().st_size == member.size:
+                continue
+            src = t.extractfile(member)
+            if src is None:
+                continue
+            with src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst, length=16 * 1024 * 1024)
 
 
 def extract_archive(path: Path, dest: Path):
