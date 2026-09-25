@@ -417,11 +417,18 @@ def finalize(report):
             score+=2 if x["matches_abstract_case_split"] else 0
             score+=1 if x["matches_methods_case_split"] else 0
             candidates.append((score,s))
-    candidates.sort(reverse=True)
+    candidates.sort(key=lambda t:(-t[0],t[1]))
+    top_score=candidates[0][0] if candidates else None
+    top_sources=[s for score,s in candidates if score==top_score] if candidates else []
+    unique_best=top_sources[0] if len(top_sources)==1 and top_score and top_score>1 else None
     report["index_source_assessment"]={
-        "best_alignment_candidate":candidates[0][1] if candidates else None,
+        "best_alignment_candidate":unique_best,
+        "top_score":top_score,
+        "tied_top_sources":top_sources,
         "candidate_scores":[{"source":s,"score":score} for score,s in candidates],
-        "note":"Advisory only. Freeze the CARE primary index source only after reviewing v3 counts and official release documentation.",
+        "assessment_status":"unique_match" if unique_best else "no_unique_paper_aligned_source",
+        "primary_benchmark_decision":"Use CARE test split only with test.txt; it contains 6,461 slices from 81 cases and matches the published test cohort. Treat CARE train as non-primary because the released train counts do not reconcile with the paper.",
+        "note":"The previous v3 scorer could report a lexicographic winner when all sources tied. This field is now null unless one source uniquely aligns with published counts.",
     }
 
     fracs=[
