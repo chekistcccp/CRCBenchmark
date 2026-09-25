@@ -427,7 +427,9 @@ CARE_NORMAL_LABEL
 | `qwen36_27b` | Qwen3.6-27B | 更新一代、更大规模 Qwen |
 | `glm46v_flash` | GLM-4.6V-Flash | 约 9B 级通用 VLM 对照 |
 | `internvl35_8b_hf` | InternVL3.5-8B-HF | InternVL 系列、HF 标准格式 |
-| `medgemma15_4b` | MedGemma 1.5 4B IT | 2026 医疗多模态专用模型 |
+| `medgemma15_4b
+gemma4_26b_a4b` | MedGemma 1.5 4B IT | 2026 医疗多模态专用模型 |
+| `gemma4_26b_a4b` | Gemma 4 26B-A4B IT | Google 2026 多模态 MoE 通用模型 |
 
 旧模型：
 
@@ -440,6 +442,8 @@ Lingshu-7B
 ```
 
 已从正式模型组中移除。主要原因不是这些模型完全不可用，而是它们与 Qwen3.5 所需的现代 Transformers runtime 混用时，需要维护多套 remote custom-code adapter，降低 benchmark 的可复现性和工程稳定性。
+
+第 6 个模型加入 **Gemma 4 26B-A4B IT**。它是 2026 年 4 月发布的多模态 MoE 模型，总参数约 25.2B、每 token 活跃约 3.8B；在单卡 BF16 下，其权重规模适合 H20 96GB / H100 80GB 作为目标硬件，并提供与 Qwen/GLM/InternVL 不同的 Google 系架构对照。
 
 当前默认运行环境：
 
