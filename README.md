@@ -45,91 +45,90 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ---
 
-## 2. 当前 CARE 实际审查结论
+## 2. CARE v3 审查结论与正式 Benchmark 决策
 
-CARE 已完成两轮只读审查。v2 对真实下载的 `CARE.zip` 得到以下事实：
+CARE 已完成 v1–v3 三轮只读审查。v3 说明公开 release 中实际上存在两组不同用途的 slice list：
 
-- 数据根目录：`DataV6`；
-- 全部 NPZ：train **26,656**，test **6,461**；
-- 所有 NPZ 文件名均可 100% 解析为 `case_id + slice_index`；
-- 按“全部 NPZ”统计：train **318** 个 case ID、test **81** 个 case ID；
-- train/test case ID **没有重叠**，因此全部 NPZ 实际形成 **399 个唯一 case ID**，与论文所述总患者数 398 不一致；
-- CARE 论文摘要写 317 train + 81 test，而 Methods 段又写 318 train + 81 test，因此正式 Benchmark 不用“全部 NPZ case 数”自行修正论文，而是继续核对 release 自带的正式 slice list；
-- train 中 318/318 病例均至少存在连续 9 层窗口，test 中 81/81 亦如此，因此 CARE 在结构上可以支持局部 T3；
-- 图像均为预处理后的 `512×512`、值域 `[0,1]`，不重新作为 HU 执行 CT window；
-- raw label 抽样值为 `0/1/2/3`；按照官方 U-SAM dataloader，`label > 2` 会被并入 canonical class 2，因此本项目同样采用 `3 → 2`；
-- canonical class 1/2 的**医学含义仍需独立确认**，目前代码不会默认把二者写死为 normal/tumor。
+- `train.txt/test.txt`：等价于全部 NPZ 列表；
+- `train_bbox.txt/test_bbox.txt`：与 bbox 子集数量一致；
+- `train_bbox.csv/test_bbox.csv`：bbox 子集；
+- 全部 NPZ。
 
-v2 还确认：`bbox.csv` **并不覆盖全部 NPZ**。
+实际数量为：
 
-- train `train_bbox.csv`：26,537 条，全部都能找到对应 NPZ，但另有 **119 个 NPZ 不在 CSV 中**；
-- test `test_bbox.csv`：6,424 条，全部都能找到对应 NPZ，但另有 **37 个 NPZ 不在 CSV 中**。
+| 来源 | Train slices | Test slices | Train cases | Test cases | 唯一 case |
+|---|---:|---:|---:|---:|---:|
+| all NPZ | 26,656 | 6,461 | 318 | 81 | 399 |
+| `txt` | 26,656 | 6,461 | 318 | 81 | 399 |
+| `bbox_txt` | 26,537 | 6,424 | 318 | 81 | 399 |
+| `bbox_csv` | 26,537 | 6,424 | 318 | 81 | 399 |
 
-因此，现在不能再简单把 `bbox.csv` 当作 ColoGround-Bench 的唯一正式 slice list。压缩包同时提供：
+所有候选来源的 train/test case ID 都没有重叠，但**没有任何一套完整 train+test 索引能够同时复现论文报告的 33,024 slice pairs 和 398 patients**。因此 audit v3 不再把某一来源错误地标记成“唯一最佳来源”。
+
+### Primary CARE cohort：冻结为官方 test split
+
+为了避免把公开 release 的 train 版本差异带入主要结论，ColoGround-Bench 的 **primary CARE cohort 现在固定为：**
 
 ```text
-train/train.txt
-train/train_bbox.txt
-train/train_bbox.csv
-
-test/test.txt
-test/test_bbox.txt
-test/test_bbox.csv
+split        = test
+index source = test.txt
+patients     = 81
+slices       = 6,461
 ```
 
-其中 `train.txt/test.txt` 很可能更接近论文所述的完整 image-label pair 列表，但必须先用 **audit v3** 精确比较四套索引来源：
+理由：
 
-1. `txt`
-2. `bbox_txt`
-3. `bbox_csv`
-4. 全部 `npz`
+1. `test.txt` 有 **6,461** 条唯一记录；
+2. 6,461 条全部都有对应 NPZ；
+3. 它覆盖 test 目录中的全部 6,461 NPZ；
+4. 文件名可 100% 恢复 `case_id + source slice index`；
+5. 共得到 **81 个 test case**；
+6. 6,461 slices / 81 cases 与论文公开的 test cohort 数量完全一致；
+7. 所有 81 个 test case 都存在至少一个真实连续的 9-slice 局部窗口，可支持 T3。
 
-新版审查会同时比较：
+因此 CARE train split **不进入 primary benchmark**。它仍保留为：
 
-- train/test slice 数；
-- patient 数；
-- train/test patient overlap；
-- 是否与论文 26,563 + 6,461 slice pairs 对齐；
-- 是否与论文 398 patients 对齐；
-- 每个列表是否引用缺失 NPZ；
-- 不同列表相对于全部 NPZ 的增删集合。
+- 开发/调试集；
+- supplementary sensitivity analysis；
+- 后续解释 release 与论文数量差异的辅助数据。
 
-运行：
+### bbox 子集
+
+`test_bbox.csv/test_bbox.txt` 只有 6,424 slices，比正式 test list 少 37 张；train bbox 子集比全 train list 少 119 张。因此 bbox 子集不作为 primary CARE cohort，但可以作为 supplementary sensitivity analysis：
+
+```text
+CARE_INDEX_SOURCE=bbox_csv
+CARE_SPLITS=test
+```
+
+### 标签与图像处理
+
+- 图像为 `512×512`、值域 `[0,1]` 的预处理图像，不重新当作 HU 做 CT window；
+- raw labels 抽样观察到 `0/1/2/3`；
+- 与官方 U-SAM 一致，代码执行 `label > 2 → 2`，得到 canonical `0/1/2`；
+- canonical class 1/2 的医学语义仍需在正式 T1/T2/T4/T5 前完成最终确认，因此当前仍保留显式 label ID 安全门。
+
+### 当前默认 CARE 索引行为
+
+正式索引默认已经改为：
+
+```text
+--care-splits test
+--care-index-source txt
+```
+
+只有显式要求时才会纳入 train：
 
 ```bash
-git pull
-
-CARE_SOURCE=data/raw/CARE/CARE.zip \
-bash run_data_audit.sh
+python scripts/index_datasets.py \
+  --care-root data/extracted/CARE \
+  --care-splits train test \
+  --care-index-source txt \
+  --care-tumor-label <VERIFIED_ID> \
+  --care-normal-label <VERIFIED_ID>
 ```
 
-默认生成：
-
-```text
-manifests/care_audit_v3.json
-```
-
-### CARE 正式索引安全门
-
-正式索引器现在支持：
-
-```text
---care-index-source txt
---care-index-source bbox_csv
---care-index-source all_npz
-```
-
-默认：
-
-```text
---care-index-source auto
-```
-
-但当 `train.txt` 与 `train_bbox.csv` 内容不同，`auto` 会**主动停止**，不会替研究者静默选择。只有 v3 审查完成后，才把 primary CARE index source 冻结到协议中。
-
-当前 CARE 的科学状态可以概括为：
-
-> **患者 ID / source slice index 已具有很强的可恢复证据，T1 与局部 T3 在结构上可行；但正式纳入哪些 slice，以及 canonical class 1/2 的医学语义，还需最后一次冻结。**
+这意味着 CARE 的**数据结构审查阶段已经结束**。后续不再需要为了 318/317 或 399/398 的 release 差异不断修改 primary cohort；该差异会在论文 Methods / Limitations 中透明报告，而主要 CARE 实验固定使用可完全复现的 81-case test cohort。
 
 ---
 
@@ -443,7 +442,8 @@ split
 python scripts/index_datasets.py \
   --msd-root data/MSD \
   --care-root data/extracted/CARE \
-  --care-mapping data/extracted/CARE/care_index.csv \
+  --care-splits test \
+  --care-index-source txt \
   --care-tumor-label <已确认的标签ID> \
   --care-normal-label <已确认的标签ID> \
   --output manifests/cases.jsonl
@@ -603,6 +603,8 @@ export MSD_ROOT=/absolute/path/to/MSD
 # export CARE_MAPPING=/absolute/path/to/care_index.csv
 # export CARE_TUMOR_LABEL=<VERIFIED_ID>
 # export CARE_NORMAL_LABEL=<VERIFIED_ID>
+# export CARE_SPLITS="test"
+# export CARE_INDEX_SOURCE=txt
 
 bash run_benchmark.sh
 ```
@@ -742,9 +744,9 @@ run_data_audit.sh
 - [x] 多模型配置
 - [x] 4-GPU 分片推理框架
 - [x] 评价框架
-- [x] CARE.zip v1/v2 审计
+- [x] CARE.zip v1/v2/v3 审计
 - [ ] CARE 标签医学语义最终确认
 - [x] CARE filename 中 case_id / source slice index 可恢复
-- [ ] CARE primary index source（txt / bbox_csv / all_npz）最终冻结
+- [x] CARE primary cohort 冻结：test split + test.txt（81 cases / 6,461 slices）
 - [ ] Benchmark v1 manifest 冻结
 - [ ] 全模型正式实验
