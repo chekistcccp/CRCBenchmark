@@ -63,8 +63,16 @@ echo "========================================================================"
 # ---------------------------------------------------------------------------
 echo
 echo "===== [0/8] Preflight ====="
+python scripts/bootstrap_runtime.py
 python scripts/smoke_test.py
 python scripts/check_gpu.py
+python - <<'PY'
+import torch, transformers
+print("Frozen runtime:")
+print("  torch       =", torch.__version__)
+print("  transformers=", transformers.__version__)
+print("  cuda        =", torch.version.cuda)
+PY
 
 # ---------------------------------------------------------------------------
 # 1. Data discovery / extraction
