@@ -53,3 +53,14 @@ models:
     max_new_tokens: 96
     role: medical_specialist
     release: "2026-01"
+
+  gemma4_26b_a4b:
+    display_name: Gemma-4-26B-A4B-IT
+    modelscope_id: google/gemma-4-26B-A4B-it
+    canonical_id: google/gemma-4-26B-A4B-it
+    adapter: pipeline
+    dtype: bfloat16
+    trust_remote_code: false
+    max_new_tokens: 96
+    role: google_general_moe_peer
+    release: "2026-04"
