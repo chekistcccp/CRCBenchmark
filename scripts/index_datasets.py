@@ -14,7 +14,8 @@ p.add_argument("--care-root", default=None)
 p.add_argument("--care-mapping", default=None, help="CSV: case_id,slice_index,npz_path,split[,spacing fields]")
 p.add_argument("--care-tumor-label", type=int, default=None, help="Explicit verified CARE tumor label ID; no default is assumed")
 p.add_argument("--care-normal-label", type=int, default=None, help="Explicit verified CARE normal-wall label ID")
-p.add_argument("--care-index-source", choices=["auto","txt","bbox_csv","all_npz"], default="auto", help="CARE primary slice list source. auto refuses to choose when txt and bbox CSV disagree.")
+p.add_argument("--care-index-source", choices=["auto","txt","bbox_txt","bbox_csv","all_npz"], default="txt", help="CARE slice-list source. Primary benchmark default is txt because test.txt exactly matches the published 6,461-slice test cohort.")
+p.add_argument("--care-splits", nargs="+", choices=["train","test"], default=["test"], help="CARE splits to include. Primary benchmark default is test only; train remains optional because release counts do not reconcile with the paper.")
 p.add_argument("--output", default="manifests/cases.jsonl")
 a = p.parse_args()
 
@@ -25,6 +26,7 @@ rows = build_case_index(
     care_tumor_label=a.care_tumor_label,
     care_normal_label=a.care_normal_label,
     care_index_source=a.care_index_source,
+    care_splits=tuple(a.care_splits),
 )
 if not rows:
     raise SystemExit("No cases indexed. Check dataset paths. For CARE, run scripts/inspect_care.py first.")
