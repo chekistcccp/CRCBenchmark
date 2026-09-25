@@ -14,6 +14,86 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 
 ---
 
+## 0. 一键运行入口
+
+正式实验统一使用根目录：
+
+```bash
+bash run.sh
+```
+
+`run.sh` 是唯一推荐的完整实验入口，会自动完成：
+
+```text
+GPU / Python 环境检查
+        ↓
+MSD + CARE 病例索引
+        ↓
+Benchmark v1 样本生成
+        ↓
+自动下载 configs/models.yaml 中全部模型权重
+        ↓
+单卡顺序运行全部模型
+        ↓
+自动评价
+        ↓
+results/
+```
+
+### Slurm 服务器
+
+本仓库**不提供、不调用**任何：
+
+```text
+sbatch
+srun
+salloc
+```
+
+脚本或命令。
+
+Slurm 作业由用户自行提交/申请。进入已经分配 GPU 的作业环境后，仅执行：
+
+```bash
+conda activate crcbench
+cd CRCBenchmark
+bash run.sh
+```
+
+`run.sh` 会尊重 Slurm 已设置的 `CUDA_VISIBLE_DEVICES`，不会自行申请 GPU。
+
+### 模型权重
+
+`run.sh` 默认在正式推理前执行：
+
+```bash
+python scripts/download_models.py \
+  --config configs/models.yaml \
+  --model-root models
+```
+
+即自动下载 **`configs/models.yaml` 中全部模型**。
+
+ModelScope 下载支持已有文件复用；代码还会检查真实权重文件/分片，而不是只检查 `config.json`，因此 Slurm 作业中断后重新运行可继续完成未下载的模型。
+
+### 断点续跑
+
+预测文件按模型持续写入：
+
+```text
+predictions/<model>/all.jsonl
+```
+
+重新执行：
+
+```bash
+bash run.sh
+```
+
+时，已经完成的 benchmark item 会自动跳过，因此无需从头推理。
+
+---
+
 ## 1. 项目定位
 
 本项目使用两个公开数据集，但二者承担不同角色：
@@ -644,22 +724,39 @@ artifacts/
 
 ---
 
-# 16. 下载模型
+# 16. 模型权重自动下载
 
-全部模型：
+正式实验**不需要手动下载模型**。
+
+执行：
 
 ```bash
-python scripts/download_models.py \
-  --config configs/models.yaml \
-  --model-root models
+bash run.sh
 ```
 
-单独下载一个模型，例如 Qwen3.5-9B：
+时会自动下载 `configs/models.yaml` 中的全部模型：
+
+```text
+qwen35_9b
+internvl3_8b
+minicpm_v_45
+qwen25vl_7b
+medgemma_4b_it
+lingshu_7b
+```
+
+权重默认保存在：
+
+```text
+models/
+```
+
+下载器会自动复用已经完整下载的 snapshot，并对不完整的权重分片执行续传/重新获取。
+
+仅在调试时才需要单独执行：
 
 ```bash
-python scripts/download_models.py \
-  --models qwen35_9b \
-  --model-root models
+python scripts/download_models.py --models qwen35_9b
 ```
 
 ---
@@ -706,28 +803,27 @@ NUM_GPUS=1
 因此直接执行：
 
 ```bash
-bash run_benchmark.sh
+bash run.sh
 ```
 
 不会再启动 4 个并行 worker。
 
-初次实验不要一次跑全部模型，可以只跑 Qwen3.5-9B：
+正式实验直接执行：
 
 ```bash
-RUN_MODELS="qwen35_9b" \
-NUM_GPUS=1 \
-bash run_benchmark.sh
+bash run.sh
 ```
 
-完成 smoke test 后，再依次增加其他模型：
+默认会运行 `configs/models.yaml` 中的**全部模型**，并在单张 H20/H100 上按顺序执行，因此不同模型不会同时占用显存。
+
+只有在代码调试阶段才建议临时限制模型：
 
 ```bash
-RUN_MODELS="qwen35_9b internvl3_8b minicpm_v_45 qwen25vl_7b medgemma_4b_it lingshu_7b" \
-NUM_GPUS=1 \
-bash run_benchmark.sh
+ONLY_MODELS="qwen35_9b" \
+bash run.sh
 ```
 
-单卡下不同模型按顺序执行，因此不会同时占用显存。
+`ONLY_MODELS` 不属于正式完整实验设置。
 
 ---
 
@@ -766,7 +862,7 @@ export MSD_ROOT=/absolute/path/to/MSD
 # export CARE_SPLITS="test"
 # export CARE_INDEX_SOURCE=txt
 
-bash run_benchmark.sh
+bash run.sh
 ```
 
 如果设置了 `CARE_ROOT`，却没有显式设置：
@@ -902,8 +998,10 @@ run_data_audit.sh
 - [x] CARE patient/slice mapping 安全门
 - [x] Benchmark 构建框架
 - [x] 多模型配置
-- [x] 4-GPU 分片推理框架
+- [x] 单卡 H20/H100 顺序推理框架
 - [x] 评价框架
+- [x] 根目录 run.sh 全自动实验入口
+- [x] 全模型权重自动下载与断点检查
 - [x] CARE.zip v1/v2/v3 审计
 - [ ] CARE 标签医学语义最终确认
 - [x] CARE filename 中 case_id / source slice index 可恢复
