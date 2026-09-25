@@ -106,9 +106,11 @@ def _select_care_source(root: Path, split: str, requested: str):
     npz_dir = root / split / f"{split}_npz"
     txt_path = root / split / f"{split}.txt"
     csv_path = root / split / f"{split}_bbox.csv"
+    bbox_txt_path = root / split / f"{split}_bbox.txt"
 
     available = {
         "txt": txt_path.exists(),
+        "bbox_txt": bbox_txt_path.exists(),
         "bbox_csv": csv_path.exists(),
         "all_npz": npz_dir.exists(),
     }
@@ -116,7 +118,7 @@ def _select_care_source(root: Path, split: str, requested: str):
     if requested != "auto":
         if requested not in available:
             raise ValueError(
-                f"Unknown CARE index source {requested!r}; choose auto/txt/bbox_csv/all_npz"
+                f"Unknown CARE index source {requested!r}; choose auto/txt/bbox_txt/bbox_csv/all_npz"
             )
         if not available[requested]:
             raise FileNotFoundError(
@@ -153,6 +155,8 @@ def _care_split_rows(root: Path, split: str, index_source: str):
 
     if selected == "txt":
         names = _read_txt_names(root / split / f"{split}.txt")
+    elif selected == "bbox_txt":
+        names = _read_txt_names(root / split / f"{split}_bbox.txt")
     elif selected == "bbox_csv":
         names = _read_bbox_csv_names(root / split / f"{split}_bbox.csv")
     elif selected == "all_npz":
@@ -168,7 +172,8 @@ def index_care(
     mapping_csv=None,
     tumor_label_id=None,
     normal_label_id=None,
-    index_source="auto",
+    index_source="txt",
+    splits=("test",),
 ):
     if tumor_label_id is None:
         raise ValueError(
@@ -180,6 +185,12 @@ def index_care(
 
     root = resolve_care_root(Path(root))
     slice_rows = []
+    splits = tuple(splits)
+    invalid_splits = sorted(set(splits) - {"train", "test"})
+    if invalid_splits:
+        raise ValueError(f"Unsupported CARE splits: {invalid_splits}")
+    if not splits:
+        raise ValueError("At least one CARE split must be selected.")
 
     if mapping_csv:
         import pandas as pd
@@ -191,6 +202,9 @@ def index_care(
             raise ValueError(f"CARE mapping missing columns: {sorted(missing)}")
 
         for row in df.to_dict("records"):
+            row_split = str(row.get("split", "unknown"))
+            if row_split != "unknown" and row_split not in splits:
+                continue
             p = Path(str(row["npz_path"]))
             p = p if p.is_absolute() else root / p
             if not p.exists():
@@ -200,7 +214,7 @@ def index_care(
             row["care_index_source"] = "explicit_mapping_csv"
             slice_rows.append(row)
     else:
-        for split in ("train", "test"):
+        for split in splits:
             rows, _ = _care_split_rows(root, split, index_source)
             slice_rows.extend(rows)
 
@@ -252,7 +266,8 @@ def build_case_index(
     care_mapping=None,
     care_tumor_label=None,
     care_normal_label=None,
-    care_index_source="auto",
+    care_index_source="txt",
+    care_splits=("test",),
 ):
     rows = []
     if msd_root:
@@ -265,6 +280,7 @@ def build_case_index(
                 tumor_label_id=care_tumor_label,
                 normal_label_id=care_normal_label,
                 index_source=care_index_source,
+                splits=care_splits,
             )
         )
     return rows
