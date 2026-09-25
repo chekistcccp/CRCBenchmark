@@ -132,6 +132,134 @@ python scripts/index_datasets.py \
 
 ---
 
+## 2.1 你现在应该做什么
+
+当前不需要再运行 CARE 数据结构 audit。下一步按以下顺序执行：
+
+### 第一步：更新仓库
+
+```bash
+git pull
+```
+
+### 第二步：正式建立实验环境
+
+现在已经进入真正的 Benchmark 实验阶段，因此建议建立完整环境：
+
+```bash
+conda create -n crcbench python=3.11 -y
+conda activate crcbench
+pip install -r requirements.txt
+export PYTHONPATH=$PWD/src:$PYTHONPATH
+```
+
+检查单卡环境：
+
+```bash
+nvidia-smi
+python scripts/check_gpu.py
+pytest -q
+```
+
+### 第三步：先跑 MSD，不等待 CARE 标签语义
+
+MSD 标签已经明确，因此可以立即用于验证整套代码：
+
+```bash
+python scripts/index_datasets.py \
+  --msd-root data/MSD \
+  --output manifests/cases_msd.jsonl
+
+python scripts/build_benchmark.py \
+  --cases manifests/cases_msd.jsonl \
+  --output manifests/benchmark_msd_smoke.jsonl \
+  --limit 3
+```
+
+只下载第一个模型：
+
+```bash
+python scripts/download_models.py \
+  --models qwen35_9b \
+  --model-root models
+```
+
+单卡运行：
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+python scripts/run_inference.py \
+  --model qwen35_9b \
+  --manifest manifests/benchmark_msd_smoke.jsonl \
+  --output predictions/qwen35_9b/msd_smoke.jsonl
+```
+
+这一阶段的目标不是得到论文结果，而是确认：
+
+```text
+数据读取
+→ Benchmark 图像生成
+→ 模型加载
+→ VLM 推理
+→ JSON 输出
+```
+
+整条链路可以正常工作。
+
+### 第四步：完成 CARE 标签 1/2 的最终语义确认
+
+完整解压 CARE 后运行：
+
+```bash
+python scripts/inspect_care_label_semantics.py \
+  data/extracted/CARE \
+  --split test \
+  --samples 12
+```
+
+会生成：
+
+```text
+artifacts/care_label_review/
+├── care_test_class_review.jpg
+└── care_test_class_review.json
+```
+
+脚本只显示：
+
+```text
+canonical class 1
+canonical class 2
+```
+
+不会自行声称哪个是肿瘤。
+
+将 `care_test_class_review.jpg` 提交进行人工/文献联合确认后，再冻结：
+
+```text
+CARE_TUMOR_LABEL
+CARE_NORMAL_LABEL
+```
+
+### 第五步：CARE 最终索引
+
+标签语义确认后：
+
+```bash
+python scripts/index_datasets.py \
+  --msd-root data/MSD \
+  --care-root data/extracted/CARE \
+  --care-splits test \
+  --care-index-source txt \
+  --care-tumor-label <VERIFIED_ID> \
+  --care-normal-label <VERIFIED_ID> \
+  --output manifests/cases.jsonl
+```
+
+之后才生成最终 `benchmark_v1.jsonl` 并冻结。
+
+---
+
 ## 3. Benchmark 五个 Track
 
 | Track | 主要问题 | 数据集 | 主要指标 |
@@ -159,9 +287,13 @@ python scripts/index_datasets.py \
 | `medgemma_4b_it` | MedGemma-4B-IT |
 | `lingshu_7b` | Lingshu-7B |
 
-当前设计以**4 × RTX 3090 24 GB** 为主要运行环境。
+当前默认运行环境调整为**单张 NVIDIA H20 或 H100**。
 
-小模型优先采用多 GPU 数据并行分片推理；不进行任务特异性训练或微调。
+- 默认只使用 1 张 GPU；
+- 模型保持 BF16，不使用量化；
+- 当前 4B–9B 级模型按单卡顺序运行；
+- 多 GPU 分片仍保留为可选功能，但不再是默认实验条件；
+- 不进行任务特异性训练或微调。
 
 模型权重默认通过 **ModelScope** 下载到本地后运行。
 
@@ -174,7 +306,8 @@ python scripts/index_datasets.py \
 - Linux
 - CUDA
 - Python 3.11
-- NVIDIA RTX 3090 × 4
+- NVIDIA H20 × 1 或 H100 × 1
+- BF16 推理
 
 创建环境：
 
@@ -544,30 +677,57 @@ python scripts/run_inference.py \
 
 ---
 
-# 18. 四张 RTX 3090 并行推理
+# 18. 单卡 H20 / H100 推理
 
-对于可以单卡加载的模型，推荐按病例分片：
-
-```bash
-for g in 0 1 2 3; do
-  CUDA_VISIBLE_DEVICES=$g \
-  python scripts/run_inference.py \
-    --model qwen35_9b \
-    --manifest manifests/benchmark_v1.jsonl \
-    --shard-index $g \
-    --num-shards 4 &
-done
-
-wait
-```
-
-然后合并：
+先确认服务器：
 
 ```bash
-python scripts/merge_shards.py \
-  --dir predictions/qwen35_9b \
-  --output predictions/qwen35_9b/all.jsonl
+nvidia-smi
+python scripts/check_gpu.py
 ```
+
+默认使用单张 GPU：
+
+```bash
+export NUM_GPUS=1
+
+CUDA_VISIBLE_DEVICES=0 \
+python scripts/run_inference.py \
+  --model qwen35_9b \
+  --manifest manifests/benchmark_v1.jsonl
+```
+
+一键脚本也已经默认：
+
+```text
+NUM_GPUS=1
+```
+
+因此直接执行：
+
+```bash
+bash run_benchmark.sh
+```
+
+不会再启动 4 个并行 worker。
+
+初次实验不要一次跑全部模型，可以只跑 Qwen3.5-9B：
+
+```bash
+RUN_MODELS="qwen35_9b" \
+NUM_GPUS=1 \
+bash run_benchmark.sh
+```
+
+完成 smoke test 后，再依次增加其他模型：
+
+```bash
+RUN_MODELS="qwen35_9b internvl3_8b minicpm_v_45 qwen25vl_7b medgemma_4b_it lingshu_7b" \
+NUM_GPUS=1 \
+bash run_benchmark.sh
+```
+
+单卡下不同模型按顺序执行，因此不会同时占用显存。
 
 ---
 
