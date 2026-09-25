@@ -10,7 +10,7 @@ models:
   internvl3_8b:
     display_name: InternVL3-8B
     modelscope_id: OpenGVLab/InternVL3-8B
-    adapter: pipeline
+    adapter: internvl_chat
     dtype: bfloat16
     trust_remote_code: true
     max_new_tokens: 96
@@ -18,7 +18,7 @@ models:
   minicpm_v_45:
     display_name: MiniCPM-V-4_5
     modelscope_id: OpenBMB/MiniCPM-V-4_5
-    adapter: pipeline
+    adapter: minicpm_chat
     dtype: bfloat16
     trust_remote_code: true
     max_new_tokens: 96
