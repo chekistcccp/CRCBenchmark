@@ -208,11 +208,11 @@ python scripts/run_inference.py \
 
 ### 第四步：完成 CARE 标签 1/2 的最终语义确认
 
-完整解压 CARE 后运行：
+CARE 不需要先完整解压，直接从压缩包生成语义审查图：
 
 ```bash
 python scripts/inspect_care_label_semantics.py \
-  data/extracted/CARE \
+  data/raw/CARE/CARE.zip \
   --split test \
   --samples 12
 ```
