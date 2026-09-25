@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from .chat_adapters import InternVLChatVLM, MiniCPMChatVLM
 from .modelscope import ensure_model
 from .pipeline_adapter import PipelineVLM
 
@@ -14,20 +13,17 @@ def build_model(model_key, models_cfg, model_root):
     )
 
     adapter = spec.get("adapter", "pipeline")
-    common = dict(
+    if adapter != "pipeline":
+        raise ValueError(
+            f"Unsupported adapter for {model_key}: {adapter}. "
+            "The current benchmark intentionally uses native Transformers "
+            "image-text-to-text models only."
+        )
+
+    model = PipelineVLM(
         model_path=local,
         dtype=spec.get("dtype", "bfloat16"),
-        trust_remote_code=bool(spec.get("trust_remote_code", True)),
+        trust_remote_code=bool(spec.get("trust_remote_code", False)),
         max_new_tokens=int(spec.get("max_new_tokens", 96)),
     )
-
-    if adapter == "pipeline":
-        model = PipelineVLM(**common)
-    elif adapter == "internvl_chat":
-        model = InternVLChatVLM(**common)
-    elif adapter == "minicpm_chat":
-        model = MiniCPMChatVLM(**common)
-    else:
-        raise ValueError(f"Unsupported adapter for {model_key}: {adapter}")
-
     return model, local
