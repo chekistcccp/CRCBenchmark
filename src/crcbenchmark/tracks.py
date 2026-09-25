@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from scipy.ndimage import binary_dilation
-from .preprocess import VolumeCase,to_rgb_pil,make_montage,bbox_from_mask,centroid_from_mask,normalize_box,normalize_point,crop_center_physical,body_mask_from_hu
+from .preprocess import VolumeCase,to_rgb_pil,make_montage,bbox_from_mask,centroid_from_mask,normalize_box,normalize_point,crop_center_physical,crop_center_pixels,body_mask_from_hu
 from .perturb import gaussian_suppress,median_replace,choose_matched_control,nested_fraction_mask
 
 LETTERS=list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -52,39 +52,111 @@ def build_t2(case,out_root,cfg):
         rows.append({"item_id":f"t2:{case.dataset}:{case.case_id}:{z}","track":"t2","dataset":case.dataset,"case_id":case.case_id,"slice_index":z,"image_path":str(p),"gt_mask_path":str(mp),"prompt":"Identify the single image location that provides the strongest visual evidence for the primary colorectal tumor. Return only JSON: {\"point\":[x,y],\"box\":[x1,y1,x2,y2]}, where all coordinates are normalized integers from 0 to 1000.","gt":{"point_norm":normalize_point(centroid,w,h),"box_norm":normalize_box(bbox,w,h),"shape_hw":[h,w]}})
     return rows
 
-def _is_contiguous(case):
-    idx=getattr(case,"slice_indices",None)
-    return True if idx is None else all(int(b)-int(a)==1 for a,b in zip(idx,idx[1:]))
+def _local_source_window(case, center_pos, radius):
+    """Return array positions for a truly consecutive source-slice window."""
+    n = case.image.shape[0]
+    src = getattr(case, "source_slice_indices", getattr(case, "slice_indices", None))
+    if src is None:
+        positions = list(range(center_pos-radius, center_pos+radius+1))
+        if min(positions) < 0 or max(positions) >= n:
+            return None, None
+        return positions, positions
+
+    src = [int(x) for x in src]
+    center_src = src[int(center_pos)]
+    lookup = {z:i for i,z in enumerate(src)}
+    wanted = list(range(center_src-radius, center_src+radius+1))
+    if not all(z in lookup for z in wanted):
+        return None, wanted
+    return [lookup[z] for z in wanted], wanted
+
 
 def build_t3(case,out_root,cfg):
-    if not _is_contiguous(case):return []
     tumor=case.tumor_mask(); areas=tumor.reshape(tumor.shape[0],-1).sum(1); pos=np.where(areas>0)[0]
     if len(pos)==0:return []
     radius=int(cfg["radius"]); n=2*radius+1; rows=[]
-    for side,center in (("entry",int(pos.min())),("exit",int(pos.max()))):
-        zs=list(range(center-radius,center+radius+1))
-        if min(zs)<0 or max(zs)>=case.image.shape[0]:continue
-        ims=[to_rgb_pil(case.image[z],intensity_mode=case.intensity_mode,size=256) for z in zs]; labs=LETTERS[:n]; montage=make_montage(ims,labs,3,3,256)
-        p=Path(out_root)/"t3"/case.dataset/case.case_id/f"{side}.jpg"; _save_image(p,montage); gt_labels=[lab for lab,z in zip(labs,zs) if areas[z]>0]
-        rows.append({"item_id":f"t3:{case.dataset}:{case.case_id}:{side}","track":"t3","dataset":case.dataset,"case_id":case.case_id,"image_path":str(p),"prompt":"The nine images labeled A-I are consecutive axial CT slices. Identify all slices containing visible primary colorectal tumor. Return only a JSON list of labels, for example [\"E\",\"F\"].","gt":{"positive_labels":gt_labels,"slice_labels":{lab:int(z) for lab,z in zip(labs,zs)},"boundary_slice":center,"spacing_z_mm":case.spacing_zyx[0],"side":side}})
+    for side,center_pos in (("entry",int(pos.min())),("exit",int(pos.max()))):
+        arr_positions,source_slices=_local_source_window(case,center_pos,radius)
+        if arr_positions is None:
+            continue
+        ims=[to_rgb_pil(case.image[z],intensity_mode=case.intensity_mode,size=256) for z in arr_positions]
+        labs=LETTERS[:n]; montage=make_montage(ims,labs,3,3,256)
+        p=Path(out_root)/"t3"/case.dataset/case.case_id/f"{side}.jpg"; _save_image(p,montage)
+        gt_labels=[lab for lab,z in zip(labs,arr_positions) if areas[z]>0]
+        spacing_z=float(case.spacing_zyx[0])
+        spacing_z=None if not np.isfinite(spacing_z) or spacing_z<=0 else spacing_z
+        boundary_source=int(source_slices[radius])
+        rows.append({
+            "item_id":f"t3:{case.dataset}:{case.case_id}:{side}",
+            "track":"t3","dataset":case.dataset,"case_id":case.case_id,
+            "image_path":str(p),
+            "prompt":"The nine images labeled A-I are truly consecutive axial CT slices. Identify all slices containing visible primary colorectal tumor. Return only a JSON list of labels, for example [\"E\",\"F\"].",
+            "gt":{
+                "positive_labels":gt_labels,
+                "slice_labels":{lab:int(z) for lab,z in zip(labs,source_slices)},
+                "boundary_slice":boundary_source,
+                "spacing_z_mm":spacing_z,
+                "side":side
+            }
+        })
     return rows
+
 
 def build_t4(case,out_root,cfg,rng):
     if case.dataset.upper()!="CARE":return []
-    tumor=case.tumor_mask(); normal=case.normal_mask(); same=[z for z in range(case.image.shape[0]) if tumor[z].any() and normal[z].any()]
-    if same: zt=zn=int(same[int(np.argmax([tumor[z].sum() for z in same]))])
+    tumor=case.tumor_mask(); normal=case.normal_mask()
+    same=[z for z in range(case.image.shape[0]) if tumor[z].any() and normal[z].any()]
+    if same:
+        zt=zn=int(same[int(np.argmax([tumor[z].sum() for z in same]))])
     else:
-        tz=np.where(tumor.reshape(tumor.shape[0],-1).sum(1)>0)[0]; nz=np.where(normal.reshape(normal.shape[0],-1).sum(1)>0)[0]
+        tz=np.where(tumor.reshape(tumor.shape[0],-1).sum(1)>0)[0]
+        nz=np.where(normal.reshape(normal.shape[0],-1).sum(1)>0)[0]
         if len(tz)==0 or len(nz)==0:return []
         _,zt,zn=min(((abs(int(a)-int(b)),int(a),int(b)) for a in tz for b in nz),key=lambda x:x[0])
+
     tc=centroid_from_mask(tumor[zt]); nc=centroid_from_mask(normal[zn])
     if tc is None or nc is None:return []
-    fov=float(cfg["fov_mm"]); out_size=int(cfg["output_size"]); spacing_yx=(case.spacing_zyx[1],case.spacing_zyx[2])
-    ta=crop_center_physical(case.image[zt],tuple(tc),spacing_yx,fov); na=crop_center_physical(case.image[zn],tuple(nc),spacing_yx,fov)
-    ti=to_rgb_pil(ta,intensity_mode=case.intensity_mode,size=out_size); ni=to_rgb_pil(na,intensity_mode=case.intensity_mode,size=out_size); rows=[]
+
+    out_size=int(cfg["output_size"])
+    dy,dx=float(case.spacing_zyx[1]),float(case.spacing_zyx[2])
+    physical_spacing_known=np.isfinite(dy) and np.isfinite(dx) and dy>0 and dx>0
+    if physical_spacing_known:
+        fov=float(cfg["fov_mm"])
+        ta=crop_center_physical(case.image[zt],tuple(tc),(dy,dx),fov)
+        na=crop_center_physical(case.image[zn],tuple(nc),(dy,dx),fov)
+        crop_mode="physical_mm"
+        crop_value=fov
+    else:
+        crop_px=int(cfg.get("fallback_crop_px",160))
+        ta=crop_center_pixels(case.image[zt],tuple(tc),crop_px)
+        na=crop_center_pixels(case.image[zn],tuple(nc),crop_px)
+        crop_mode="fixed_pixels"
+        crop_value=crop_px
+
+    ti=to_rgb_pil(ta,intensity_mode=case.intensity_mode,size=out_size)
+    ni=to_rgb_pil(na,intensity_mode=case.intensity_mode,size=out_size)
+    rows=[]
+    src=getattr(case,"source_slice_indices",getattr(case,"slice_indices",None))
+    source_zt=int(src[zt]) if src is not None else int(zt)
+    source_zn=int(src[zn]) if src is not None else int(zn)
     for swap in (0,1):
-        pair=[ti,ni] if swap==0 else [ni,ti]; montage=make_montage(pair,["A","B"],1,2,out_size); p=Path(out_root)/"t4"/case.dataset/case.case_id/f"swap{swap}.jpg"; _save_image(p,montage)
-        rows.append({"item_id":f"t4:{case.dataset}:{case.case_id}:{swap}","track":"t4","dataset":case.dataset,"case_id":case.case_id,"image_path":str(p),"prompt":"Two rectal CT regions from the same patient are shown as A and B. Which region contains stronger visual evidence of malignant rectal involvement? Answer only A or B.","choices":["A","B"],"gt":{"answer":"A" if swap==0 else "B","delta_z":int(abs(zt-zn)),"swap":swap}})
+        pair=[ti,ni] if swap==0 else [ni,ti]
+        montage=make_montage(pair,["A","B"],1,2,out_size)
+        p=Path(out_root)/"t4"/case.dataset/case.case_id/f"swap{swap}.jpg"; _save_image(p,montage)
+        rows.append({
+            "item_id":f"t4:{case.dataset}:{case.case_id}:{swap}",
+            "track":"t4","dataset":case.dataset,"case_id":case.case_id,
+            "image_path":str(p),
+            "prompt":"Two rectal CT regions from the same patient are shown as A and B. Which region contains stronger visual evidence of malignant rectal involvement? Answer only A or B.",
+            "choices":["A","B"],
+            "gt":{
+                "answer":"A" if swap==0 else "B",
+                "delta_source_slice":int(abs(source_zt-source_zn)),
+                "swap":swap,
+                "crop_mode":crop_mode,
+                "crop_value":crop_value
+            }
+        })
     return rows
 
 def build_t5(case,out_root,cfg,rng):
