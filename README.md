@@ -118,6 +118,34 @@ transformers == 5.17.0
 
 ---
 
+### TorchAudio 与固定 PyTorch 的兼容
+
+本项目不使用音频任务，但 Transformers 的 `pipeline` 导入路径可能探测已安装的 `torchaudio`。如果系统中残留的是其他 CUDA 构建（例如 cu128），会在导入阶段报：
+
+```text
+PyTorch has CUDA version 12.6
+TorchAudio has CUDA version 12.8
+```
+
+此时**不修改 torch**，只调整 torchaudio：
+
+```bash
+python -m pip install --force-reinstall --no-deps torchaudio==2.13.0 \
+  --index-url https://download.pytorch.org/whl/cu126
+```
+
+`--no-deps` 用来保证 pip 不会借由 torchaudio 重新解析或替换已经固定好的 PyTorch。
+
+新版 `run.sh` 会在 preflight 自动执行等价的兼容修复，并在继续构建数据前实际测试：
+
+```python
+from transformers import pipeline
+```
+
+确保模型推理入口已经可导入。
+
+---
+
 ### 模型软件栈采用柔性版本
 
 当前只固定 PyTorch/CUDA 运行时：
@@ -137,7 +165,7 @@ modelscope>=1.31
 
 这样既保证 Qwen3.5/Qwen3.6 所需的现代 Transformers 5.x 支持，又允许 pip 在同一 major version 内解析兼容版本。
 
-`run.sh` 的 preflight 只验证 PyTorch/CUDA 是否符合冻结条件，不会再自动升级或降级 Transformers，也不会自动安装/卸载 torchaudio 等无关依赖。
+`run.sh` 的 preflight 只冻结 PyTorch/CUDA；Transformers、Accelerate、ModelScope 等不再自动升降级。若检测到已安装的 torchaudio 与 cu126 PyTorch 二进制不兼容，则只重装匹配的 cu126 torchaudio，并使用 `--no-deps` 保证不会改动 torch。
 
 ---
 
@@ -404,7 +432,9 @@ conda activate crcbench
 pip install torch==2.13.0 torchvision==0.28.0 \
   --index-url https://download.pytorch.org/whl/cu126
 
-python -m pip uninstall -y torchaudio
+# 如果环境里已有 torchaudio，建议先让它与 cu126 对齐：
+python -m pip install --force-reinstall --no-deps torchaudio==2.13.0 \
+  --index-url https://download.pytorch.org/whl/cu126
 
 pip install -r requirements.txt
 
