@@ -2,15 +2,16 @@
 #
 # IMPORTANT: install PyTorch FIRST with the CUDA 12.6 wheel index:
 #
-#   pip install torch==2.13.0 torchvision==0.28.0 torchaudio==2.13.0 \
+#   pip install torch==2.13.0 torchvision==0.28.0 \
 #     --index-url https://download.pytorch.org/whl/cu126
 #
 # Then install this file:
 #
 #   pip install -r requirements.txt
 #
-# torch / torchvision / torchaudio are intentionally NOT listed below, so pip
-# will not replace the explicitly selected CUDA 12.6 builds.
+# torch / torchvision are intentionally NOT listed below, so pip will not
+# replace the explicitly selected CUDA 12.6 builds.
+# torchaudio is intentionally not required because this benchmark has no audio tasks.
 
 transformers==5.17.0
 accelerate>=1.2
