@@ -84,15 +84,16 @@ bash run.sh
 ```text
 torch==2.13.0
 torchvision==0.28.0
-torchaudio==2.13.0
 CUDA wheel index = cu126
 ```
 
 必须先单独安装：
 
 ```bash
-pip install torch==2.13.0 torchvision==0.28.0 torchaudio==2.13.0 \
+pip install torch==2.13.0 torchvision==0.28.0 \
   --index-url https://download.pytorch.org/whl/cu126
+
+python -m pip uninstall -y torchaudio
 ```
 
 然后再安装其余依赖：
@@ -101,14 +102,13 @@ pip install torch==2.13.0 torchvision==0.28.0 torchaudio==2.13.0 \
 pip install -r requirements.txt
 ```
 
-`requirements.txt` **故意不再包含 torch / torchvision / torchaudio**，这样后续安装 Transformers、ModelScope、timm 等依赖时不会把指定的 CUDA 12.6 PyTorch 版本覆盖掉。
+`requirements.txt` **故意不再包含 torch / torchvision**；本项目不需要 torchaudio，若环境中残留其他 CUDA 版本的 torchaudio，preflight 会自动卸载，这样后续安装 Transformers、ModelScope、timm 等依赖时不会把指定的 CUDA 12.6 PyTorch 版本覆盖掉。
 
 `run.sh` 的 preflight 会检查：
 
 ```text
 torch        == 2.13.0
 torchvision  == 0.28.0
-torchaudio   == 2.13.0
 transformers == 5.17.0
 ```
 
@@ -406,8 +406,10 @@ git pull
 conda create -n crcbench python=3.11 -y
 conda activate crcbench
 
-pip install torch==2.13.0 torchvision==0.28.0 torchaudio==2.13.0 \
+pip install torch==2.13.0 torchvision==0.28.0 \
   --index-url https://download.pytorch.org/whl/cu126
+
+python -m pip uninstall -y torchaudio
 
 pip install -r requirements.txt
 
@@ -514,8 +516,10 @@ Qwen3.6-27B BF16 权重约 56 GB，是当前模型组里显存占用最高的一
 conda create -n crcbench python=3.11 -y
 conda activate crcbench
 
-pip install torch==2.13.0 torchvision==0.28.0 torchaudio==2.13.0 \
+pip install torch==2.13.0 torchvision==0.28.0 \
   --index-url https://download.pytorch.org/whl/cu126
+
+python -m pip uninstall -y torchaudio
 
 pip install -r requirements.txt
 
