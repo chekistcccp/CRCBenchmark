@@ -1,24 +1,22 @@
-# ColoGround-Bench Python dependencies
+# ColoGround-Bench dependencies
 #
-# IMPORTANT: install PyTorch FIRST with the CUDA 12.6 wheel index:
+# PyTorch runtime is installed separately and is the ONLY frozen binary runtime:
 #
 #   pip install torch==2.13.0 torchvision==0.28.0 \
 #     --index-url https://download.pytorch.org/whl/cu126
 #
-# Then install this file:
+# Do not add torch here. This prevents pip from replacing the user-selected
+# CUDA 12.6 PyTorch build.
 #
-#   pip install -r requirements.txt
-#
-# torch / torchvision are intentionally NOT listed below, so pip will not
-# replace the explicitly selected CUDA 12.6 builds.
-# torchaudio is intentionally not required because this benchmark has no audio tasks.
+# torchvision is installed together with torch above because it is ABI-coupled
+# to the PyTorch build. All other dependencies below are intentionally flexible.
 
-transformers==5.17.0
+transformers>=5.17,<6
 accelerate>=1.2
-modelscope>=1.31.0
+modelscope>=1.31
 qwen-vl-utils>=0.0.8
 
-numpy>=1.26
+numpy>=1.26,<3
 pandas>=2.2
 scipy>=1.13
 scikit-learn>=1.5
