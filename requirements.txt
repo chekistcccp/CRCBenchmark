@@ -10,6 +10,8 @@
 #
 # torchvision is installed together with torch above because it is ABI-coupled
 # to the PyTorch build. All other dependencies below are intentionally flexible.
+# If torchaudio already exists and has a mismatched CUDA build, run.sh repairs
+# torchaudio only (with --no-deps), leaving torch untouched.
 
 transformers>=5.17,<6
 accelerate>=1.2
