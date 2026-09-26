@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v2.1
+# ColoGround-Bench Protocol v2.2
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -200,7 +200,7 @@ Python       = 3.11
 PyTorch      = 2.13.0
 torchvision  = 0.28.0
 PyTorch CUDA wheel index = cu126
-Transformers = 5.17.0
+Transformers = >=5.17,<6 (resolved at environment installation)
 ```
 
 PyTorch and torchvision are installed separately using the official CUDA 12.6 wheel index:
@@ -211,3 +211,6 @@ pip install torch==2.13.0 torchvision==0.28.0 \
 ```
 
 The project `requirements.txt` intentionally excludes torch and torchvision to prevent the remaining Python dependencies from replacing the frozen CUDA runtime.
+
+
+Only the PyTorch/CUDA binary runtime is frozen. The model-framework layer (Transformers, Accelerate, ModelScope and related pure-Python packages) uses compatible version ranges from `requirements.txt` and is not automatically mutated by `run.sh`. This avoids coupling the benchmark to one unnecessary patch release while preserving a reproducible major-version boundary for modern Qwen3.5-era multimodal models.
