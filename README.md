@@ -85,6 +85,8 @@ bash run.sh
 torch==2.13.0
 torchvision==0.28.0
 CUDA wheel index = cu126
+
+其余依赖允许根据 requirements.txt 自动解析
 ```
 
 必须先单独安装：
@@ -102,7 +104,7 @@ python -m pip uninstall -y torchaudio
 pip install -r requirements.txt
 ```
 
-`requirements.txt` **故意不再包含 torch / torchvision**；本项目不需要 torchaudio，若环境中残留其他 CUDA 版本的 torchaudio，preflight 会自动卸载，这样后续安装 Transformers、ModelScope、timm 等依赖时不会把指定的 CUDA 12.6 PyTorch 版本覆盖掉。
+`requirements.txt` **故意不再包含 torch / torchvision**；其他依赖采用柔性版本约束，不由 preflight 自动修改，这样后续安装 Transformers、ModelScope、timm 等依赖时不会把指定的 CUDA 12.6 PyTorch 版本覆盖掉。
 
 `run.sh` 的 preflight 会检查：
 
@@ -116,33 +118,26 @@ transformers == 5.17.0
 
 ---
 
-### Transformers 版本固定
+### 模型软件栈采用柔性版本
 
-当前 benchmark 将运行时统一到：
-
-```text
-transformers==5.17.0
-```
-
-原因是 Qwen3.5 / Qwen3.6 已经进入 Transformers 5.x 原生架构支持。此前为了兼容旧版 InternVL3 / MiniCPM remote custom code 将环境降到 4.57.6，会直接导致：
+当前只固定 PyTorch/CUDA 运行时：
 
 ```text
-ValueError: model type qwen3_5 is not recognized
+torch base version = 2.13.0
+CUDA runtime       = 12.6
 ```
 
-因此本项目不再维护“新 Qwen + 旧 custom-code VLM”混合运行环境，而改成**Transformers 5.17 原生多模态模型优先**。
+Transformers、Accelerate、ModelScope 等模型软件栈**不再锁死到单一 patch 版本**。当前 `requirements.txt` 使用：
 
-`run.sh` 会在正式实验前自动检查版本；如果不是 5.17.0，默认自动调整：
-
-```bash
-python scripts/bootstrap_runtime.py
+```text
+transformers>=5.17,<6
+accelerate>=1.2
+modelscope>=1.31
 ```
 
-如果不希望脚本自动修改环境：
+这样既保证 Qwen3.5/Qwen3.6 所需的现代 Transformers 5.x 支持，又允许 pip 在同一 major version 内解析兼容版本。
 
-```bash
-CRCBENCH_AUTO_FIX_RUNTIME=0 bash run.sh
-```
+`run.sh` 的 preflight 只验证 PyTorch/CUDA 是否符合冻结条件，不会再自动升级或降级 Transformers，也不会自动安装/卸载 torchaudio 等无关依赖。
 
 ---
 
