@@ -11,7 +11,6 @@ from packaging.version import Version
 
 TORCH_TARGET = "2.13.0"
 TORCHVISION_TARGET = "0.28.0"
-TORCHAUDIO_TARGET = "2.13.0"
 TORCH_INDEX = "https://download.pytorch.org/whl/cu126"
 CUDA_TARGET = "12.6"
 TRANSFORMERS_TARGET = "5.17.0"
@@ -58,10 +57,10 @@ def main():
     print("[runtime] required environment")
     print(f"  torch base       : {TORCH_TARGET}")
     print(f"  torchvision base : {TORCHVISION_TARGET}")
-    print(f"  torchaudio base  : {TORCHAUDIO_TARGET}")
     print(f"  CUDA runtime     : {CUDA_TARGET}")
     print(f"  torch index      : {TORCH_INDEX}")
     print(f"  transformers     : {TRANSFORMERS_TARGET}")
+    print("  torchaudio       : not required / should be absent")
 
     print("[runtime] installed environment")
     print(f"  torch            : {torch_v}")
@@ -69,14 +68,12 @@ def main():
     print(f"  torchvision      : {vision_v}")
     print(f"  torchvision base : {base_version(vision_v)}")
     print(f"  torchaudio       : {audio_v}")
-    print(f"  torchaudio base  : {base_version(audio_v)}")
     print(f"  CUDA runtime     : {cuda_v}")
     print(f"  transformers     : {tf_v}")
 
     torch_ok = (
         base_version(torch_v) == TORCH_TARGET
         and base_version(vision_v) == TORCHVISION_TARGET
-        and base_version(audio_v) == TORCHAUDIO_TARGET
         and cuda_v == CUDA_TARGET
     )
 
@@ -85,7 +82,7 @@ def main():
             raise SystemExit(
                 "PyTorch runtime mismatch. Install exactly:\n"
                 f"pip install torch=={TORCH_TARGET} torchvision=={TORCHVISION_TARGET} "
-                f"torchaudio=={TORCHAUDIO_TARGET} --index-url {TORCH_INDEX}"
+                f"--index-url {TORCH_INDEX}"
             )
 
         print("[runtime] Installing the frozen CUDA 12.6 PyTorch runtime...")
@@ -97,10 +94,22 @@ def main():
             "--upgrade",
             f"torch=={TORCH_TARGET}",
             f"torchvision=={TORCHVISION_TARGET}",
-            f"torchaudio=={TORCHAUDIO_TARGET}",
             "--index-url",
             TORCH_INDEX,
         ])
+
+    # This benchmark is image-only. A stale torchaudio wheel can make
+    # Transformers import fail if torchaudio was compiled for another CUDA
+    # version (e.g. cu128 while torch is cu126). Remove it rather than carrying
+    # an unnecessary binary dependency.
+    if version("torchaudio") is not None:
+        if not auto_fix:
+            raise SystemExit(
+                "torchaudio is installed but not required. Remove it with:\n"
+                "python -m pip uninstall -y torchaudio"
+            )
+        print("[runtime] Removing torchaudio: not needed for this image-only benchmark.")
+        run([sys.executable, "-m", "pip", "uninstall", "-y", "torchaudio"])
 
     if base_version(version("transformers")) != TRANSFORMERS_TARGET:
         if not auto_fix:
@@ -134,10 +143,9 @@ def main():
             f"torchvision is {final_vision!r} (base={base_version(final_vision)!r}), "
             f"expected base {TORCHVISION_TARGET!r}."
         )
-    if base_version(final_audio) != TORCHAUDIO_TARGET:
+    if final_audio is not None:
         raise SystemExit(
-            f"torchaudio is {final_audio!r} (base={base_version(final_audio)!r}), "
-            f"expected base {TORCHAUDIO_TARGET!r}."
+            f"torchaudio is still installed ({final_audio!r}); remove it before running."
         )
     if final_cuda != CUDA_TARGET:
         raise SystemExit(
