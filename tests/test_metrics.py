@@ -1,10 +1,12 @@
 import numpy as np
-from crcbenchmark.metrics import recall_at_k,reciprocal_rank,iou_xyxy,binary_prf
+from crcbenchmark.metrics import hit_at_k,recall_at_k,reciprocal_rank,iou_xyxy,binary_prf
 from crcbenchmark.perturb import nested_fraction_mask
 
 def test_retrieval_metrics():
     ranked=["C","A","B"]; positives={"B"}
     assert recall_at_k(ranked,positives,2)==0 and recall_at_k(ranked,positives,3)==1 and reciprocal_rank(ranked,positives)==1/3
+    assert recall_at_k(["A","C","B"], {"A","B","D"}, 2)==1/3
+    assert hit_at_k(["A","C","B"], {"A","B","D"}, 2)==1
 
 def test_iou():
     assert iou_xyxy([0,0,10,10],[0,0,10,10])==1
@@ -53,3 +55,4 @@ def test_t3_with_spacing():
     out = eval_t3(item, pred)
     assert out["boundary_error_slices"] == 1.0
     assert out["boundary_error_mm"] == 2.5
+    assert out["all_slices_f1"] == 2 / 3

@@ -11,6 +11,8 @@ def index_msd(root):
     root = Path(root)
     rows = []
     for image_path in sorted((root / "imagesTr").glob("*.nii.gz")):
+        if image_path.name.startswith("._"):
+            continue
         mask_path = root / "labelsTr" / image_path.name
         if mask_path.exists():
             rows.append({

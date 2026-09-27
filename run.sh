@@ -34,10 +34,17 @@ MODEL_ROOT="${MODEL_ROOT:-$ROOT_DIR/models}"
 MODELS_CONFIG="${MODELS_CONFIG:-configs/models.yaml}"
 BENCHMARK_CONFIG="${BENCHMARK_CONFIG:-configs/benchmark.yaml}"
 BOOTSTRAP="${BOOTSTRAP:-2000}"
+RUN_ROOT="${RUN_ROOT:-$ROOT_DIR/runs/protocol_v2_3}"
+MANIFEST_DIR="$RUN_ROOT/manifests"
+PREDICTION_DIR="$RUN_ROOT/predictions"
+RESULT_DIR="$RUN_ROOT/results"
+ARTIFACT_DIR="$RUN_ROOT/artifacts"
+export MANIFEST_DIR RESULT_DIR
 
 ENABLE_CARE="${ENABLE_CARE:-1}"
 AUTO_PREPARE_DATA="${AUTO_PREPARE_DATA:-1}"
 EVAL_ONLY="${EVAL_ONLY:-0}"
+PILOT_ONLY="${PILOT_ONLY:-0}"
 
 # Optional explicit already-extracted roots. If empty, prepare_data.py discovers
 # or extracts from data/raw/.
@@ -47,11 +54,14 @@ CARE_ROOT="${CARE_ROOT:-}"
 # Debug-only model subset. Empty = ALL models in configs/models.yaml.
 ONLY_MODELS="${ONLY_MODELS:-}"
 
-mkdir -p   manifests   predictions   results   artifacts/msd   artifacts/care_tumor1_normal2   artifacts/care_tumor2_normal1   "$MODEL_ROOT"   logs
+mkdir -p "$MANIFEST_DIR" "$PREDICTION_DIR" "$RESULT_DIR" \
+  "$ARTIFACT_DIR/msd" "$ARTIFACT_DIR/care_tumor1_normal2" \
+  "$ARTIFACT_DIR/care_tumor2_normal1" "$MODEL_ROOT" logs
 
 echo "========================================================================"
 echo "ColoGround-Bench automatic full experiment"
 echo "Repository   : $ROOT_DIR"
+echo "Run outputs  : $RUN_ROOT"
 echo "Date         : $(date -Iseconds)"
 echo "Host         : $(hostname)"
 echo "Python       : $(command -v python)"
@@ -81,13 +91,16 @@ if [[ "$EVAL_ONLY" == "1" ]]; then
   echo "Using existing manifests and predictions; no model will be loaded."
   python scripts/evaluate_existing.py \
     --models-config "$MODELS_CONFIG" \
+    --manifest-root "$MANIFEST_DIR" \
+    --predictions-root "$PREDICTION_DIR" \
+    --results-root "$RESULT_DIR" \
     --bootstrap "$BOOTSTRAP"
   python scripts/collect_results.py \
-    --results-root results \
-    --output results/all_experiments_summary.json
-  rm -f results/failed_experiments.txt
+    --results-root "$RESULT_DIR" \
+    --output "$RESULT_DIR/all_experiments_summary.json"
+  rm -f "$RESULT_DIR/failed_experiments.txt"
   echo "Evaluation-only recovery completed."
-  echo "Combined summary: results/all_experiments_summary.json"
+  echo "Combined summary: $RESULT_DIR/all_experiments_summary.json"
   exit 0
 fi
 
@@ -98,7 +111,7 @@ echo
 echo "===== [1/8] Prepare datasets ====="
 
 if [[ "$AUTO_PREPARE_DATA" == "1" && ( -z "$MSD_ROOT" || ( "$ENABLE_CARE" == "1" && -z "$CARE_ROOT" ) ) ]]; then
-  PREPARE_ARGS=(--data-root "$DATA_ROOT" --output manifests/data_paths.json)
+  PREPARE_ARGS=(--data-root "$DATA_ROOT" --output "$MANIFEST_DIR/data_paths.json")
   if [[ "$ENABLE_CARE" != "1" ]]; then
     PREPARE_ARGS+=(--skip-care)
   fi
@@ -107,7 +120,9 @@ if [[ "$AUTO_PREPARE_DATA" == "1" && ( -z "$MSD_ROOT" || ( "$ENABLE_CARE" == "1"
   if [[ -z "$MSD_ROOT" ]]; then
     MSD_ROOT="$(python - <<'PY'
 import json
-print(json.load(open("manifests/data_paths.json"))["msd_root"])
+import os
+from pathlib import Path
+print(json.loads((Path(os.environ["MANIFEST_DIR"]) / "data_paths.json").read_text())["msd_root"])
 PY
 )"
   fi
@@ -115,7 +130,9 @@ PY
   if [[ "$ENABLE_CARE" == "1" && -z "$CARE_ROOT" ]]; then
     CARE_ROOT="$(python - <<'PY'
 import json
-print(json.load(open("manifests/data_paths.json"))["care_root"])
+import os
+from pathlib import Path
+print(json.loads((Path(os.environ["MANIFEST_DIR"]) / "data_paths.json").read_text())["care_root"])
 PY
 )"
   fi
@@ -147,23 +164,23 @@ echo
 echo "===== [2/8] Build frozen experiment manifests ====="
 
 echo "[MSD] indexing"
-python scripts/index_datasets.py   --msd-root "$MSD_ROOT"   --output manifests/cases_msd.jsonl
+python scripts/index_datasets.py   --msd-root "$MSD_ROOT"   --output "$MANIFEST_DIR/cases_msd.jsonl"
 
 echo "[MSD] benchmark"
-python scripts/build_benchmark.py   --cases manifests/cases_msd.jsonl   --config "$BENCHMARK_CONFIG"   --output manifests/benchmark_msd.jsonl   --artifact-root artifacts/msd   --experiment-name msd
+python scripts/build_benchmark.py   --cases "$MANIFEST_DIR/cases_msd.jsonl"   --config "$BENCHMARK_CONFIG"   --output "$MANIFEST_DIR/benchmark_msd.jsonl"   --artifact-root "$ARTIFACT_DIR/msd"   --experiment-name msd
 
 EXPERIMENTS=("msd")
 
 if [[ "$ENABLE_CARE" == "1" ]]; then
   echo "[CARE A] tumor=1 normal=2"
-  python scripts/index_datasets.py     --care-root "$CARE_ROOT"     --care-splits test     --care-index-source txt     --care-tumor-label 1     --care-normal-label 2     --output manifests/cases_care_tumor1_normal2.jsonl
+  python scripts/index_datasets.py     --care-root "$CARE_ROOT"     --care-splits test     --care-index-source txt     --care-tumor-label 1     --care-normal-label 2     --output "$MANIFEST_DIR/cases_care_tumor1_normal2.jsonl"
 
-  python scripts/build_benchmark.py     --cases manifests/cases_care_tumor1_normal2.jsonl     --config "$BENCHMARK_CONFIG"     --output manifests/benchmark_care_tumor1_normal2.jsonl     --artifact-root artifacts/care_tumor1_normal2     --experiment-name care_tumor1_normal2
+  python scripts/build_benchmark.py     --cases "$MANIFEST_DIR/cases_care_tumor1_normal2.jsonl"     --config "$BENCHMARK_CONFIG"     --output "$MANIFEST_DIR/benchmark_care_tumor1_normal2.jsonl"     --artifact-root "$ARTIFACT_DIR/care_tumor1_normal2"     --experiment-name care_tumor1_normal2
 
   echo "[CARE B] tumor=2 normal=1"
-  python scripts/index_datasets.py     --care-root "$CARE_ROOT"     --care-splits test     --care-index-source txt     --care-tumor-label 2     --care-normal-label 1     --output manifests/cases_care_tumor2_normal1.jsonl
+  python scripts/index_datasets.py     --care-root "$CARE_ROOT"     --care-splits test     --care-index-source txt     --care-tumor-label 2     --care-normal-label 1     --output "$MANIFEST_DIR/cases_care_tumor2_normal1.jsonl"
 
-  python scripts/build_benchmark.py     --cases manifests/cases_care_tumor2_normal1.jsonl     --config "$BENCHMARK_CONFIG"     --output manifests/benchmark_care_tumor2_normal1.jsonl     --artifact-root artifacts/care_tumor2_normal1     --experiment-name care_tumor2_normal1
+  python scripts/build_benchmark.py     --cases "$MANIFEST_DIR/cases_care_tumor2_normal1.jsonl"     --config "$BENCHMARK_CONFIG"     --output "$MANIFEST_DIR/benchmark_care_tumor2_normal1.jsonl"     --artifact-root "$ARTIFACT_DIR/care_tumor2_normal1"     --experiment-name care_tumor2_normal1
 
   EXPERIMENTS+=("care_tumor1_normal2" "care_tumor2_normal1")
 fi
@@ -173,7 +190,13 @@ fi
 # ---------------------------------------------------------------------------
 echo
 echo "===== [3/8] Download ALL configured model weights ====="
-python scripts/download_models.py   --config "$MODELS_CONFIG"   --model-root "$MODEL_ROOT"
+if [[ -n "$ONLY_MODELS" ]]; then
+  read -r -a SELECTED_MODEL_KEYS <<< "$ONLY_MODELS"
+  python scripts/download_models.py --config "$MODELS_CONFIG" \
+    --model-root "$MODEL_ROOT" --models "${SELECTED_MODEL_KEYS[@]}"
+else
+  python scripts/download_models.py --config "$MODELS_CONFIG" --model-root "$MODEL_ROOT"
+fi
 
 if [[ -n "$ONLY_MODELS" ]]; then
   echo "WARNING: ONLY_MODELS is a debugging override; formal run uses all models."
@@ -202,18 +225,36 @@ echo "Experiments: ${EXPERIMENTS[*]}"
 # ---------------------------------------------------------------------------
 echo
 echo "===== [4/8] Real-image model adapter smoke tests ====="
+SMOKE_FAILED=()
+SMOKE_CARE_ARGS=()
+if [[ "$ENABLE_CARE" == "1" ]]; then
+  SMOKE_CARE_ARGS=(--care-manifest "$MANIFEST_DIR/benchmark_care_tumor1_normal2.jsonl")
+fi
 for model in "${MODEL_KEYS[@]}"; do
   echo
   echo "[adapter smoke] $model"
-  python scripts/model_adapter_smoke.py \
+  if ! python scripts/model_adapter_smoke.py \
     --model "$model" \
     --models-config "$MODELS_CONFIG" \
     --benchmark-config "$BENCHMARK_CONFIG" \
     --model-root "$MODEL_ROOT" \
-    --manifest manifests/benchmark_msd.jsonl
+    --manifest "$MANIFEST_DIR/benchmark_msd.jsonl" \
+    "${SMOKE_CARE_ARGS[@]}" \
+    --strict; then
+    SMOKE_FAILED+=("$model")
+  fi
 done
 
-echo "All model adapters passed one-item image inference."
+if [[ "${#SMOKE_FAILED[@]}" -gt 0 ]]; then
+  echo "Output-format pilot failed for: ${SMOKE_FAILED[*]}" >&2
+  echo "Full inference was not started." >&2
+  exit 1
+fi
+echo "All model adapters passed per-track image inference and format checks."
+if [[ "$PILOT_ONLY" == "1" ]]; then
+  echo "Pilot complete. Full inference was not started."
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # 5. Inference + evaluation
@@ -230,9 +271,9 @@ for model in "${MODEL_KEYS[@]}"; do
   echo "========================================================================"
 
   for exp in "${EXPERIMENTS[@]}"; do
-    manifest="manifests/benchmark_${exp}.jsonl"
-    pred_dir="predictions/$model/$exp"
-    result_dir="results/$model/$exp"
+    manifest="$MANIFEST_DIR/benchmark_${exp}.jsonl"
+    pred_dir="$PREDICTION_DIR/$model/$exp"
+    result_dir="$RESULT_DIR/$model/$exp"
     pred_file="$pred_dir/all.jsonl"
 
     mkdir -p "$pred_dir" "$result_dir"
@@ -259,7 +300,7 @@ done
 # ---------------------------------------------------------------------------
 echo
 echo "===== [6/8] Collect experiment summaries ====="
-python scripts/collect_results.py   --results-root results   --output results/all_experiments_summary.json
+python scripts/collect_results.py   --results-root "$RESULT_DIR"   --output "$RESULT_DIR/all_experiments_summary.json"
 
 # ---------------------------------------------------------------------------
 # 7. Final status
@@ -285,15 +326,16 @@ meta = {
         "Do not infer the true label semantics from model performance."
     ),
 }
-Path("results").mkdir(exist_ok=True)
-Path("results/run_metadata.json").write_text(
+result_dir = Path(os.environ["RESULT_DIR"])
+result_dir.mkdir(parents=True, exist_ok=True)
+(result_dir / "run_metadata.json").write_text(
     json.dumps(meta, indent=2, ensure_ascii=False),
     encoding="utf-8",
 )
 PY
 
 if [[ "${#FAILED[@]}" -gt 0 ]]; then
-  printf "%s\n" "${FAILED[@]}" > results/failed_experiments.txt
+  printf "%s\n" "${FAILED[@]}" > "$RESULT_DIR/failed_experiments.txt"
   echo "Run completed with failures:"
   printf "  - %s\n" "${FAILED[@]}"
   echo "Successful predictions/results were preserved."
@@ -301,18 +343,18 @@ if [[ "${#FAILED[@]}" -gt 0 ]]; then
   exit 1
 fi
 
-rm -f results/failed_experiments.txt
+rm -f "$RESULT_DIR/failed_experiments.txt"
 
 echo "========================================================================"
 echo "ALL EXPERIMENTS COMPLETED"
 echo "MSD results:"
-echo "  results/<model>/msd/"
+echo "  $RESULT_DIR/<model>/msd/"
 if [[ "$ENABLE_CARE" == "1" ]]; then
   echo "CARE branch A (tumor=1, normal=2):"
-  echo "  results/<model>/care_tumor1_normal2/"
+  echo "  $RESULT_DIR/<model>/care_tumor1_normal2/"
   echo "CARE branch B (tumor=2, normal=1):"
-  echo "  results/<model>/care_tumor2_normal1/"
+  echo "  $RESULT_DIR/<model>/care_tumor2_normal1/"
 fi
 echo "Combined summary:"
-echo "  results/all_experiments_summary.json"
+echo "  $RESULT_DIR/all_experiments_summary.json"
 echo "========================================================================"

@@ -123,3 +123,25 @@ care_tumor2_normal1
 两套结果不得用于“通过哪个模型表现更高来推测真实标签语义”。未来如获得权威映射，匹配的分支升级为 primary CARE result，反向分支作为 label-inversion sensitivity/control。
 
 根目录 `run.sh` 已自动执行以上两套 CARE 分支，因此正式计算实验不再依赖手工设置 `CARE_TUMOR_LABEL` / `CARE_NORMAL_LABEL`。
+
+## 8. U-SAM 仓库与论文复查（2026-09-27）
+
+复查的作者原始材料：
+
+- [U-SAM 示例 notebook](https://github.com/kanydao/U-SAM/blob/main/Annotation_Example/visualize_samples.ipynb)：读入五个示例 NPZ 的 `image` 与 `label`，用 `inferno` 色图显示 annotation；没有类别图例、`np.unique` 输出或数值 ID 到医学类别的说明。
+- [CARE 数据加载器](https://github.com/kanydao/U-SAM/blob/main/dataset/rectum_dataloader.py)：明确执行 `mask[mask > 2] = 2`，并依次遍历类别 1、2 取点；没有给两个数值命名。
+- [U-SAM 训练/评价代码](https://github.com/kanydao/U-SAM/blob/main/u-sam.py)：评价时按 `class:1`、`class:2` 的顺序输出类别指标；代码没有把它们写成 normal/tumor。
+- [作者发表论文](https://pmc.ncbi.nlm.nih.gov/articles/PMC12219254/)：确认 CARE 标注正常直肠组织和肿瘤，表格按 Normal、Tumor 顺序列出指标；正文未明确给出 `NPZ label 1 = ...; 2 = ...` 的映射。论文图中的可视化颜色是呈现约定，不能直接充当 NPZ 整数编码的证明。
+
+**推断而非验证：** 论文的 Normal→Tumor 顺序与代码的 1→2 顺序相符，所以 `1=normal, 2=tumor` 是更自然的解释；`>2→2` 也与让高值归入第二类相容。但两者都只是间接线索，不能作为正式标签释义的权威证据。当前保持两分支敏感性分析，不按模型表现决定映射。要关闭语义门槛，需要作者/数据发布方的明确数值说明，或带有明确医学类别图例且能逐像素对应原始 NPZ 数值的标注材料。
+
+## 9. 论文补充 PDF 核查（2026-09-27）
+
+核查了论文页面链接的 [Supplementary Information PDF](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs43856-025-00953-0/MediaObjects/43856_2025_953_MOESM1_ESM.pdf)，共 15 页。
+
+- 第 3 页 Supplementary Note 6 说明医生逐层勾画正常直肠和肿瘤，最终图像与标签配对存为 NPZ；**未列出 NPZ 的整数编码表**。
+- 第 12 页 Supplementary Fig. 13 展示 ITK-SNAP 标注界面：调色板中 `Label 1` 为红色，`Label 4` 为黄色，图中两个区域也为红色和黄色。紧接着的 Supplementary Fig. 14 图注说明红色为正常直肠组织、黄色为直肠肿瘤。这提示**界面绘图时可能**使用 `1=正常、4=肿瘤`；但截图标题为 `demo.mri`，没有证明它是发布的 CARE NPZ，也没有展示 NPZ 的原始数值。
+- 第 6–8、11 页图注使用红色表示正常组织，蓝色表示肿瘤；第 12 页 Fig. 14 改用黄色表示肿瘤。因此论文图示颜色并非统一的数据编码，不能单独用于推断 NPZ 类别 ID。
+- 第 13–15 页表格以 `Normal`、`Tumor` 顺序汇总指标，仍未把这两个名称与 NPZ 数值 1、2 对应。
+
+结合官方 dataloader 的 `mask[mask > 2] = 2`，若发布的 NPZ 延续截图所暗示的 `1=正常、4=肿瘤` 编码，则训练时会得到 `1=正常、2=肿瘤`。这是一个**条件推断**，不是已证实的发布数据映射。下一步应直接核查作者提供的标注示例或原始 NPZ 的数值与图像空间对应关系，最好取得作者对 NPZ 编码的明确说明；在此之前仍保留双分支。

@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from crcbenchmark.config import load_yaml
 from crcbenchmark.io import read_jsonl
 from crcbenchmark.models.registry import build_model
-from crcbenchmark.inference import run_manifest
+from crcbenchmark.inference import manifest_fingerprint, run_manifest, validate_resume_predictions
 
 
 p = argparse.ArgumentParser()
@@ -42,6 +42,7 @@ selected = [r for i, r in enumerate(rows) if i % a.num_shards == a.shard_index]
 
 if not a.no_resume and Path(out).exists():
     existing = read_jsonl(out)
+    validate_resume_predictions(existing, manifest_fingerprint(rows), Path(out))
     done = {r["item_id"] for r in existing}
     missing = [r for r in selected if r["item_id"] not in done]
     if not missing:

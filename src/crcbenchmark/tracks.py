@@ -1,4 +1,5 @@
 from __future__ import annotations
+import hashlib
 from pathlib import Path
 import numpy as np
 from PIL import Image
@@ -25,7 +26,7 @@ def build_t1(case,out_root,cfg,rng):
     tumor=case.tumor_mask(); areas=tumor.reshape(tumor.shape[0],-1).sum(1); pos=np.where(areas>0)[0]
     if len(pos)==0:return []
     zmax=int(np.argmax(areas)); npos=int(cfg["positives"]); nneg=int(cfg["negatives"]); pos_sel=_neighbor_positives(pos,zmax,npos); neg_all=np.where(areas==0)[0]
-    if len(neg_all)<nneg:return []
+    if len(pos)<npos or len(neg_all)<nneg:return []
     neg_sorted=sorted([int(z) for z in neg_all],key=lambda z:min(abs(z-int(pos.min())),abs(z-int(pos.max())))); pool=neg_sorted[:max(nneg*4,nneg)]
     neg_sel=list(rng.choice(pool,size=nneg,replace=False)) if len(pool)>=nneg else neg_sorted[:nneg]
     base=[(int(z),True) for z in pos_sel]+[(int(z),False) for z in neg_sel]; rows=[]
@@ -34,9 +35,10 @@ def build_t1(case,out_root,cfg,rng):
         montage=make_montage(ims,labs,3,4,256); p=Path(out_root)/"t1"/case.dataset/case.case_id/f"positive_perm{perm}.jpg"; _save_image(p,montage)
         positives=[lab for lab,(_,is_pos) in zip(labs,shuffled) if is_pos]
         rows.append({"item_id":f"t1:{case.dataset}:{case.case_id}:pos:{perm}","track":"t1","dataset":case.dataset,"case_id":case.case_id,"image_path":str(p),"prompt":"Twelve axial CT slices from one patient are shown and labeled A-L. Rank up to five slices according to the likelihood that they contain the primary colorectal tumor. Return only a JSON list of labels from most to least suspicious. If no slice contains tumor, return [\"NONE\"].","gt":{"positive_labels":positives,"negative_only":False}})
-    neg_sel=list(rng.choice(neg_all,size=npos+nneg,replace=False)); ims=[to_rgb_pil(case.image[int(z)],intensity_mode=case.intensity_mode,size=256) for z in neg_sel]; labs=LETTERS[:len(ims)]
-    montage=make_montage(ims,labs,3,4,256); p=Path(out_root)/"t1"/case.dataset/case.case_id/"negative_only.jpg"; _save_image(p,montage)
-    rows.append({"item_id":f"t1:{case.dataset}:{case.case_id}:neg","track":"t1","dataset":case.dataset,"case_id":case.case_id,"image_path":str(p),"prompt":"Twelve axial CT slices from one patient are shown and labeled A-L. Rank up to five slices according to the likelihood that they contain the primary colorectal tumor. Return only a JSON list of labels from most to least suspicious. If no slice contains tumor, return [\"NONE\"].","gt":{"positive_labels":[],"negative_only":True}})
+    if len(neg_all)>=npos+nneg:
+        neg_sel=list(rng.choice(neg_all,size=npos+nneg,replace=False)); ims=[to_rgb_pil(case.image[int(z)],intensity_mode=case.intensity_mode,size=256) for z in neg_sel]; labs=LETTERS[:len(ims)]
+        montage=make_montage(ims,labs,3,4,256); p=Path(out_root)/"t1"/case.dataset/case.case_id/"negative_only.jpg"; _save_image(p,montage)
+        rows.append({"item_id":f"t1:{case.dataset}:{case.case_id}:neg","track":"t1","dataset":case.dataset,"case_id":case.case_id,"image_path":str(p),"prompt":"Twelve axial CT slices from one patient are shown and labeled A-L. Rank up to five slices according to the likelihood that they contain the primary colorectal tumor. Return only a JSON list of labels from most to least suspicious. If no slice contains tumor, return [\"NONE\"].","gt":{"positive_labels":[],"negative_only":True}})
     return rows
 
 def build_t2(case,out_root,cfg):
@@ -177,6 +179,8 @@ def build_t5(case,out_root,cfg,rng):
     return rows
 
 def build_all_tracks(case,out_root,cfg,seed):
-    out_root=Path(out_root); rng=np.random.default_rng(abs(hash((seed,case.dataset,case.case_id)))%(2**32)); rows=[]
+    key=f"{seed}\0{case.dataset}\0{case.case_id}".encode("utf-8")
+    stable_seed=int.from_bytes(hashlib.sha256(key).digest()[:8],"big")
+    out_root=Path(out_root); rng=np.random.default_rng(stable_seed); rows=[]
     rows+=build_t1(case,out_root,cfg["t1"],rng); rows+=build_t2(case,out_root,cfg["t2"]); rows+=build_t3(case,out_root,cfg["t3"]); rows+=build_t4(case,out_root,cfg["t4"],rng); rows+=build_t5(case,out_root,cfg["t5"],rng)
     return rows

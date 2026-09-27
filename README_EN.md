@@ -15,11 +15,11 @@ The project intentionally does **not** create synthetic T stage, pathology, MSI,
 
 | Track | Question | Dataset availability | Primary metric |
 |---|---|---|---|
-| T1 Lesion Retrieval | Can the VLM find tumor-bearing slices among same-patient hard negatives? | MSD; CARE only if patient/slice order is verified | Recall@3 |
+| T1 Lesion Retrieval | Can the VLM find tumor-bearing slices among same-patient hard negatives? | MSD; CARE only if patient/slice order is verified | Positive-slice Recall@3; Hit@3 separately |
 | T2 Visual Grounding | Can it point to the actual tumor and draw a useful box? | MSD + CARE after CARE label semantics are verified | Pointing Accuracy |
 | T3 Volumetric Consistency | Can it track tumor appearance/disappearance across consecutive slices? | MSD; CARE only if contiguous order is proven | Slice F1 |
 | T4 CARE Hard Negative | Can it distinguish tumor from normal rectal wall? | CARE only after label semantics are verified | Pairwise Accuracy |
-| T5 Counterfactual Faithfulness | Does removing the true lesion change the model more than removing matched control tissue? | MSD + CARE after CARE label semantics are verified | Faithfulness Gap |
+| T5 Counterfactual Faithfulness | Does removing the true lesion change the model more than removing matched control tissue? | MSD + CARE after CARE label semantics are verified | Continuous Faithfulness Gap only with validated likelihoods; decision scores separately |
 
 ## Hardware target
 

@@ -2,43 +2,47 @@ from __future__ import annotations
 from collections import defaultdict
 import numpy as np
 from PIL import Image
-from .metrics import recall_at_k, reciprocal_rank, iou_xyxy, pointing_hit, binary_prf, normalized_distance
+from .metrics import hit_at_k, recall_at_k, reciprocal_rank, iou_xyxy, pointing_hit, binary_prf, normalized_distance
+from .utils import parse_choice_response, parse_json_object_response, parse_label_list_response
 
 
 def _pred_map(rows): return {r["item_id"]:r for r in rows}
-def _labels_from_parsed(pred):
-    p=pred.get("parsed")
-    if isinstance(p,list): return [str(x).upper() for x in p]
-    raw=str(pred.get("raw_response","")).upper()
-    return [c for c in "ABCDEFGHIJKL" if c in raw]
+def _labels_from_parsed(pred, allowed="ABCDEFGHIJKL", max_items=None):
+    return parse_label_list_response(pred.get("raw_response", ""), allowed, max_items) or []
 
 def eval_t1(item,pred):
-    ranked=_labels_from_parsed(pred); gt=item["gt"]
+    ranked=_labels_from_parsed(pred,max_items=5); gt=item["gt"]
     if gt["negative_only"]:
-        none="NONE" in str(pred.get("raw_response","")).upper() or (isinstance(pred.get("parsed"),list) and "NONE" in [str(x).upper() for x in pred["parsed"]])
+        none=ranked==["NONE"]
         return {"none_specificity":float(none),"invalid":float(not ranked and not none)}
+    if ranked==["NONE"]: ranked=[]
     positives=set(gt["positive_labels"])
-    return {"recall_1":recall_at_k(ranked,positives,1),"recall_3":recall_at_k(ranked,positives,3),"recall_5":recall_at_k(ranked,positives,5),"mrr":reciprocal_rank(ranked,positives),"invalid":float(len(ranked)==0)}
+    return {"hit_1":hit_at_k(ranked,positives,1),"hit_3":hit_at_k(ranked,positives,3),"hit_5":hit_at_k(ranked,positives,5),"recall_1":recall_at_k(ranked,positives,1),"recall_3":recall_at_k(ranked,positives,3),"recall_5":recall_at_k(ranked,positives,5),"mrr":reciprocal_rank(ranked,positives),"invalid":float(len(ranked)==0)}
 
 def eval_t2(item,pred):
-    p=pred.get("parsed")
-    if not isinstance(p,dict): return {"pointing_acc":0.0,"box_iou":0.0,"norm_distance":1.0,"invalid":1.0}
+    p=parse_json_object_response(pred.get("raw_response",""))
+    if p is None: return {"pointing_acc":0.0,"box_iou":0.0,"norm_distance":1.0,"invalid":1.0}
     point=p.get("point"); box=p.get("box")
-    if not (isinstance(point,list) and len(point)==2): point=[float("nan"),float("nan")]
-    if not (isinstance(box,list) and len(box)==4): box=[0,0,0,0]
+    valid_point=isinstance(point,list) and len(point)==2 and all(type(x) in (int,float) and np.isfinite(x) and 0<=x<=1000 for x in point)
+    valid_box=isinstance(box,list) and len(box)==4 and all(type(x) in (int,float) and np.isfinite(x) and 0<=x<=1000 for x in box)
+    if not valid_point: point=[float("nan"),float("nan")]
+    if not valid_box: box=[0,0,0,0]
     gt_mask=np.asarray(Image.open(item["gt_mask_path"]))>0; h,w=gt_mask.shape
     point_px=[float(point[0])/1000*(w-1),float(point[1])/1000*(h-1)]
     gp=item["gt"]["point_norm"]; gp=[gp[0]/1000*(w-1),gp[1]/1000*(h-1)]
-    return {"pointing_acc":pointing_hit(point_px,gt_mask),"box_iou":iou_xyxy([float(x) for x in box],[float(x) for x in item["gt"]["box_norm"]]),"norm_distance":normalized_distance(point_px,gp,w,h),"invalid":float(any(not np.isfinite(float(x)) for x in point))}
+    return {"pointing_acc":pointing_hit(point_px,gt_mask) if valid_point else 0.0,"box_iou":iou_xyxy([float(x) for x in box],[float(x) for x in item["gt"]["box_norm"]]),"norm_distance":normalized_distance(point_px,gp,w,h) if valid_point else 1.0,"invalid":float(not (valid_point and valid_box))}
 
 def eval_t3(item,pred):
-    labels=set(_labels_from_parsed(pred)); truth=set(item["gt"]["positive_labels"]); p,r,f1=binary_prf(labels,truth); mapping=item["gt"]["slice_labels"]; boundary=int(item["gt"]["boundary_slice"])
+    labels=set(_labels_from_parsed(pred,allowed="ABCDEFGHI")); labels.discard("NONE"); truth=set(item["gt"]["positive_labels"]); p,r,f1=binary_prf(labels,truth); mapping=item["gt"]["slice_labels"]; boundary=int(item["gt"]["boundary_slice"])
+    _,_,all_f1=binary_prf(set(mapping),truth)
     sl=[mapping[x] for x in labels if x in mapping]; err=abs((min(sl) if item["gt"]["side"]=="entry" else max(sl))-boundary) if sl else len(mapping)
     spacing=item["gt"].get("spacing_z_mm")
     boundary_error_mm=float(err)*float(spacing) if spacing is not None else None
-    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"boundary_error_slices":float(err),"boundary_error_mm":boundary_error_mm,"invalid":float(len(labels)==0)}
+    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"all_slices_f1":all_f1,"boundary_error_slices":float(err),"boundary_error_mm":boundary_error_mm,"invalid":float(len(labels)==0)}
 
-def eval_t4(item,pred): return {"pairwise_acc":float(pred.get("choice")==item["gt"]["answer"]),"invalid":float(pred.get("choice") is None)}
+def eval_t4(item,pred):
+    choice=parse_choice_response(pred.get("raw_response",""),item["choices"])
+    return {"pairwise_acc":float(choice==item["gt"]["answer"]),"invalid":float(choice is None)}
 
 def eval_items(manifest,preds):
     pm=_pred_map(preds); out=[]
@@ -58,13 +62,25 @@ def eval_t5_groups(manifest,preds):
         bc={i["condition"]:(i,p) for i,p in pairs}
         if "original" not in bc: continue
         def pp(cond):
-            pred=bc.get(cond,({},{}))[1]; s=pred.get("choice_scores") or {}
-            return float(s["PRESENT"]) if "PRESENT" in s else float(pred.get("choice")=="PRESENT")
+            if cond not in bc: return float("nan")
+            item,pred=bc[cond]; s=pred.get("choice_scores") or {}
+            if pred.get("score_mode")=="likelihood" and "PRESENT" in s:
+                value=float(s["PRESENT"])
+                return value if np.isfinite(value) else float("nan")
+            choice=parse_choice_response(pred.get("raw_response",""),item["choices"])
+            return float(choice=="PRESENT") if choice is not None else float("nan")
         p0=pp("original"); pl=pp("lesion_gaussian") if "lesion_gaussian" in bc else float("nan"); pc=pp("control_gaussian") if "control_gaussian" in bc else float("nan")
         lm=pp("lesion_median") if "lesion_median" in bc else float("nan"); cm=pp("control_median") if "control_median" in bc else float("nan")
         fracs=[(float(c.rsplit("_",1)[1]),pp(c)) for c in sorted([c for c in bc if c.startswith("lesion_frac_")],key=lambda x:float(x.rsplit("_",1)[1]))]
-        seq=[p0]+[p for _,p in fracs]; mono=np.mean([float(a>=b) for a,b in zip(seq,seq[1:])]) if len(seq)>1 else float("nan")
-        fi,fp=bc["original"]; out.append({"item_id":gid,"track":"t5","dataset":fi["dataset"],"case_id":fi["case_id"],"p_original":p0,"p_lesion_gaussian":pl,"p_control_gaussian":pc,"delta_lesion":p0-pl,"delta_control":p0-pc,"faithfulness_gap":pc-pl,"faithfulness_gap_median":cm-lm if np.isfinite(lm) and np.isfinite(cm) else float("nan"),"monotonicity":float(mono),"score_mode":fp.get("score_mode")})
+        seq=[p0]+[p for _,p in fracs]; mono=np.mean([float(a>=b) for a,b in zip(seq,seq[1:])]) if len(seq)>1 and all(np.isfinite(seq)) else float("nan")
+        fi,fp=bc["original"]
+        valid_fraction=float(np.mean([np.isfinite(pp(c)) for c in bc]))
+        original_present=float(p0>=0.5) if np.isfinite(p0) else float("nan")
+        likelihood=fp.get("score_mode")=="likelihood"
+        interpretable=likelihood or (np.isfinite(p0) and p0==1.0)
+        if not interpretable:
+            mono=float("nan")
+        out.append({"item_id":gid,"track":"t5","dataset":fi["dataset"],"case_id":fi["case_id"],"p_original":p0,"p_lesion_gaussian":pl,"p_control_gaussian":pc,"original_present":original_present,"valid_fraction":valid_fraction,"delta_lesion":p0-pl if interpretable else float("nan"),"delta_control":p0-pc if interpretable else float("nan"),"faithfulness_gap":pc-pl if likelihood else float("nan"),"decision_gap":pc-pl if interpretable and not likelihood else float("nan"),"faithfulness_gap_median":cm-lm if likelihood and np.isfinite(lm) and np.isfinite(cm) else float("nan"),"monotonicity":float(mono) if likelihood else float("nan"),"decision_monotonicity":float(mono) if not likelihood else float("nan"),"score_mode":fp.get("score_mode")})
     return out
 
 def patient_aggregate(rows):

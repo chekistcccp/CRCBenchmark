@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from crcbenchmark.indexing import index_care
+from crcbenchmark.indexing import index_care, index_msd
 
 
 def _touch(path: Path):
@@ -100,3 +100,11 @@ def test_auto_refuses_disagreeing_txt_and_bbox_csv(tmp_path):
             index_source="auto",
             splits=("test",),
         )
+
+
+def test_msd_ignores_appledouble_files(tmp_path):
+    for name in ("colon_001.nii.gz", "._colon_001.nii.gz"):
+        _touch(tmp_path / "imagesTr" / name)
+        _touch(tmp_path / "labelsTr" / name)
+    rows = index_msd(tmp_path)
+    assert [row["case_id"] for row in rows] == ["colon_001"]

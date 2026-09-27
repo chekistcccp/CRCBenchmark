@@ -5,7 +5,13 @@ import numpy as np
 def recall_at_k(ranked: list[str], positives: set[str], k: int) -> float:
     if not positives:
         return float("nan")
-    return float(any(x in positives for x in ranked[:k]))
+    return len(set(ranked[:k]) & positives) / len(positives)
+
+
+def hit_at_k(ranked: list[str], positives: set[str], k: int) -> float:
+    if not positives:
+        return float("nan")
+    return float(bool(set(ranked[:k]) & positives))
 
 
 def reciprocal_rank(ranked: list[str], positives: set[str]) -> float:

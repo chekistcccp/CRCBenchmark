@@ -22,6 +22,16 @@ Benchmark 使用真实专家分割标注作为核心 ground truth，不人为构
 bash run.sh
 ```
 
+本版协议的输出默认放在 `runs/protocol_v2_3/`，与旧的 `manifests/`、`predictions/`、`results/` 和 `artifacts/` 分开。断点续跑会校验 manifest 指纹，防止重建后的同名题目误用旧预测。
+
+提交完整 GPU 任务前，可先在分配的 GPU 上运行格式预检：
+
+```bash
+PILOT_ONLY=1 bash run.sh
+```
+
+预检会为每个模型各抽取 T1–T5 的一题检查输出格式；不启动完整推理。若只测试一个模型，可设置 `ONLY_MODELS="internvl35_8b_hf"`。预检失败时，`run.sh` 会在完整推理前退出；修复模型输出后再运行 `bash run.sh`。`RUN_ROOT` 可指定独立输出目录。
+
 你不需要手动：
 
 - 解压两个数据集；
@@ -477,11 +487,11 @@ CARE_NORMAL_LABEL
 
 | Track | 主要问题 | 数据集 | 主要指标 |
 |---|---|---|---|
-| **T1 Lesion Retrieval** | VLM 能否从同一病例的一组 CT 层面中找到肿瘤层面？ | MSD；CARE 在标签语义确认后启用 | Recall@3 |
+| **T1 Lesion Retrieval** | VLM 能否从同一病例的一组 CT 层面中找到肿瘤层面？ | MSD；CARE 在标签语义确认后启用 | 真正的阳性层面 Recall@3；另报 Hit@3 |
 | **T2 Visual Grounding** | VLM 能否把坐标或框真正定位到肿瘤？ | MSD + 经验证后的 CARE | Pointing Accuracy |
 | **T3 Volumetric Consistency** | VLM 能否识别病灶沿 z 轴的出现/消失和连续性？ | MSD；CARE 仅使用 source slice index 真正连续的局部窗口 | Slice F1 |
 | **T4 CARE Hard Negative** | VLM 能否区分癌性直肠组织与正常直肠壁？ | CARE | Pairwise Accuracy |
-| **T5 Counterfactual Faithfulness** | 删除真实病灶是否比删除匹配对照区域更显著地改变模型判断？ | MSD + 经验证后的 CARE | Faithfulness Gap |
+| **T5 Counterfactual Faithfulness** | 删除真实病灶是否比删除匹配对照区域更显著地改变模型判断？ | MSD + 经验证后的 CARE | 经验证的连续分数才报告 Faithfulness Gap；决策式结果单列 |
 
 本项目**不设置人为加权的 Overall Score**。不同能力分别报告，避免用一个总分掩盖“分类正确但定位错误”等重要现象。
 

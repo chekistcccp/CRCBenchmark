@@ -1,14 +1,14 @@
-# ColoGround-Bench Protocol v2.2
+# ColoGround-Bench Protocol v2.3
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
 ## Tracks
 
-1. **T1 Lesion Retrieval** — rank tumor-bearing slices among same-patient hard negatives. Primary metric: Recall@3.
+1. **T1 Lesion Retrieval** — rank tumor-bearing slices among same-patient hard negatives. Primary metric: true positive-slice Recall@3; Hit@3 is reported separately.
 2. **T2 Visual Grounding** — output a normalized point and bounding box on tumor-positive slices. Primary metric: Pointing Accuracy.
 3. **T3 Volumetric Consistency** — identify tumor-positive slices around entry/exit boundaries. Primary metric: patient-level Slice F1.
 4. **T4 CARE Hard Negative** — same-patient tumor ROI versus normal rectal wall ROI. Primary metric: pairwise accuracy and swap consistency.
-5. **T5 Counterfactual Faithfulness** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. Primary continuous metric is the Faithfulness Gap when candidate likelihoods are available; a categorical flip-based equivalent is retained for custom models whose forward method does not expose stable likelihoods.
+5. **T5 Counterfactual Faithfulness** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. Continuous Faithfulness Gap requires validated candidate likelihoods. Decision-only scores are reported separately and only for groups where the original image is recognized as tumor-present; unparseable answers do not become ABSENT.
 
 ## Dataset-specific roles
 
@@ -151,6 +151,8 @@ The canonical experiment entry point is:
 ```bash
 bash run.sh
 ```
+
+Protocol v2.3 writes new manifests, artifacts, predictions, and results under `runs/protocol_v2_3/` by default. Prediction resume requires a matching manifest SHA-256 fingerprint. A GPU output-format pilot can be run with `PILOT_ONLY=1 bash run.sh`; it checks one item per available track and exits before full inference.
 
 The repository is intentionally scheduler-agnostic. `run.sh` never calls `sbatch`, `srun`, `salloc`, or any other Slurm command. GPU/node allocation and job submission are performed manually by the user or institutional scheduler configuration.
 

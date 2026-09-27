@@ -8,6 +8,8 @@ data/
 artifacts/
 predictions/
 results/
+results_strict_*/
+runs/
 *.nii
 *.nii.gz
 *.npz
