@@ -37,6 +37,7 @@ BOOTSTRAP="${BOOTSTRAP:-2000}"
 
 ENABLE_CARE="${ENABLE_CARE:-1}"
 AUTO_PREPARE_DATA="${AUTO_PREPARE_DATA:-1}"
+EVAL_ONLY="${EVAL_ONLY:-0}"
 
 # Optional explicit already-extracted roots. If empty, prepare_data.py discovers
 # or extracts from data/raw/.
@@ -73,6 +74,22 @@ print("  torch       =", torch.__version__)
 print("  transformers=", transformers.__version__)
 print("  cuda        =", torch.version.cuda)
 PY
+
+if [[ "$EVAL_ONLY" == "1" ]]; then
+  echo
+  echo "===== Evaluation-only recovery mode ====="
+  echo "Using existing manifests and predictions; no model will be loaded."
+  python scripts/evaluate_existing.py \
+    --models-config "$MODELS_CONFIG" \
+    --bootstrap "$BOOTSTRAP"
+  python scripts/collect_results.py \
+    --results-root results \
+    --output results/all_experiments_summary.json
+  rm -f results/failed_experiments.txt
+  echo "Evaluation-only recovery completed."
+  echo "Combined summary: results/all_experiments_summary.json"
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # 1. Data discovery / extraction
