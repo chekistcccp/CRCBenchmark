@@ -30,7 +30,7 @@ bash run.sh
 PILOT_ONLY=1 bash run.sh
 ```
 
-预检会为每个模型各抽取 T1–T5 的一题检查输出格式；不启动完整推理。若只测试一个模型，可设置 `ONLY_MODELS="internvl35_8b_hf"`。预检失败时，`run.sh` 会在完整推理前退出；修复模型输出后再运行 `bash run.sh`。`RUN_ROOT` 可指定独立输出目录。
+预检会为每个模型各抽取 T1–T5 的一题检查输出格式；不启动完整推理。若只测试部分模型，可设置 `ONLY_MODELS="qwen35_9b qwen36_27b glm46v_flash"`。单个格式错误会在日志中标记，正式评分仍将该回答计为 invalid；只有模型全部五题均无法产生合格格式时，`run.sh` 才会在完整推理前退出。Qwen3.5、Qwen3.6 和 GLM-4.6V 使用各自聊天模板的 `enable_thinking: false`，避免 96 token 的回答预算被思考内容耗尽。`RUN_ROOT` 可指定独立输出目录。
 
 你不需要手动：
 

@@ -7,6 +7,7 @@ models:
     dtype: bfloat16
     trust_remote_code: false
     max_new_tokens: 96
+    enable_thinking: false
     role: primary_baseline
     release: "2026-02"
 
@@ -18,6 +19,7 @@ models:
     dtype: bfloat16
     trust_remote_code: false
     max_new_tokens: 96
+    enable_thinking: false
     role: larger_newer_qwen
     release: "2026-04"
 
@@ -29,6 +31,7 @@ models:
     dtype: bfloat16
     trust_remote_code: false
     max_new_tokens: 96
+    enable_thinking: false
     role: general_vlm_peer
     release: "2025-11"
 

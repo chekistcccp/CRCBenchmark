@@ -47,9 +47,11 @@ class PipelineVLM(VLMAdapter):
         dtype="bfloat16",
         trust_remote_code=True,
         max_new_tokens=96,
+        enable_thinking=None,
     ):
         self.model_path = str(model_path)
         self.max_new_tokens = int(max_new_tokens)
+        self.enable_thinking = enable_thinking
         self.pipe = pipeline(
             "image-text-to-text",
             model=self.model_path,
@@ -71,11 +73,20 @@ class PipelineVLM(VLMAdapter):
             }
         ]
 
+        call_kwargs = {}
+        if self.enable_thinking is not None:
+            # Transformers forwards preprocessing kwargs to apply_chat_template.
+            # Qwen and GLM templates use this switch to start the final answer
+            # directly, without spending the short answer budget on reasoning.
+            call_kwargs["enable_thinking"] = self.enable_thinking
         out = self.pipe(
             text=messages,
-            max_new_tokens=max_new_tokens or self.max_new_tokens,
-            do_sample=False,
+            generate_kwargs={
+                "max_new_tokens": max_new_tokens or self.max_new_tokens,
+                "do_sample": False,
+            },
             return_full_text=False,
+            **call_kwargs,
         )
         return _extract_text(out)
 

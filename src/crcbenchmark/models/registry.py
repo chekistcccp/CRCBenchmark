@@ -25,5 +25,6 @@ def build_model(model_key, models_cfg, model_root):
         dtype=spec.get("dtype", "bfloat16"),
         trust_remote_code=bool(spec.get("trust_remote_code", False)),
         max_new_tokens=int(spec.get("max_new_tokens", 96)),
+        enable_thinking=spec.get("enable_thinking"),
     )
     return model, local

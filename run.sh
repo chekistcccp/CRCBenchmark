@@ -246,11 +246,11 @@ for model in "${MODEL_KEYS[@]}"; do
 done
 
 if [[ "${#SMOKE_FAILED[@]}" -gt 0 ]]; then
-  echo "Output-format pilot failed for: ${SMOKE_FAILED[*]}" >&2
+  echo "Adapter pilot found no valid track outputs for: ${SMOKE_FAILED[*]}" >&2
   echo "Full inference was not started." >&2
   exit 1
 fi
-echo "All model adapters passed per-track image inference and format checks."
+echo "All model adapters produced at least one valid pilot output; see per-track format reports above."
 if [[ "$PILOT_ONLY" == "1" ]]; then
   echo "Pilot complete. Full inference was not started."
   exit 0
