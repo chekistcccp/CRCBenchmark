@@ -997,6 +997,27 @@ python scripts/evaluate.py \
 
 ---
 
+## 19.1 仅重新计算评价
+
+如果模型推理已经完成，但评价阶段因为指标代码问题失败，不要重新跑 VLM。可以直接使用已有 `predictions/`：
+
+```bash
+EVAL_ONLY=1 bash run.sh
+```
+
+该模式：
+
+- 不重新下载模型；
+- 不加载任何 VLM；
+- 不重新推理；
+- 直接检查现有 manifest 与 prediction 是否完整；
+- 重算全部模型 × MSD/CARE 两分支的 metrics；
+- 重建 `results/all_experiments_summary.json`。
+
+这特别适合 Slurm 长时间推理完成后，仅修复 evaluation code 的情况。
+
+---
+
 # 20. 一键运行全部实验
 
 默认：
