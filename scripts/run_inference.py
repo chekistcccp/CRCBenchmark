@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import argparse
-import os
 from pathlib import Path
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
 from crcbenchmark.config import load_yaml
 from crcbenchmark.io import read_jsonl
 from crcbenchmark.models.registry import build_model
 from crcbenchmark.inference import run_manifest
+
 
 p = argparse.ArgumentParser()
 p.add_argument("--model", required=True)
@@ -22,14 +25,44 @@ p.add_argument("--num-shards", type=int, default=1)
 p.add_argument("--track", default=None, choices=[None,"t1","t2","t3","t4","t5"])
 p.add_argument("--no-resume", action="store_true")
 a = p.parse_args()
+
 mcfg = load_yaml(a.models_config)
 bcfg = load_yaml(a.benchmark_config)
 model_root = a.model_root or bcfg["paths"]["model_root"]
+
 rows = read_jsonl(a.manifest)
 if a.track:
     rows = [r for r in rows if r["track"] == a.track]
-out = a.output or str(Path(bcfg["paths"]["prediction_root"]) / a.model / f"shard_{a.shard_index:02d}.jsonl")
+
+out = a.output or str(
+    Path(bcfg["paths"]["prediction_root"]) / a.model / f"shard_{a.shard_index:02d}.jsonl"
+)
+
+selected = [r for i, r in enumerate(rows) if i % a.num_shards == a.shard_index]
+
+if not a.no_resume and Path(out).exists():
+    existing = read_jsonl(out)
+    done = {r["item_id"] for r in existing}
+    missing = [r for r in selected if r["item_id"] not in done]
+    if not missing:
+        print(
+            f"Resume check: {a.model} already has all {len(selected)} selected "
+            f"predictions in {out}; skipping model load and inference."
+        )
+        raise SystemExit(0)
+    print(
+        f"Resume check: {len(done)} existing predictions, "
+        f"{len(missing)} selected items still missing."
+    )
+
 model, local = build_model(a.model, mcfg, model_root)
 print(f"Loaded {a.model} from local ModelScope snapshot: {local}")
-run_manifest(model, rows, out, a.shard_index, a.num_shards, resume=not a.no_resume)
+run_manifest(
+    model,
+    rows,
+    out,
+    a.shard_index,
+    a.num_shards,
+    resume=not a.no_resume,
+)
 print(out)
