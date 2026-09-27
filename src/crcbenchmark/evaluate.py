@@ -34,7 +34,9 @@ def eval_t2(item,pred):
 def eval_t3(item,pred):
     labels=set(_labels_from_parsed(pred)); truth=set(item["gt"]["positive_labels"]); p,r,f1=binary_prf(labels,truth); mapping=item["gt"]["slice_labels"]; boundary=int(item["gt"]["boundary_slice"])
     sl=[mapping[x] for x in labels if x in mapping]; err=abs((min(sl) if item["gt"]["side"]=="entry" else max(sl))-boundary) if sl else len(mapping)
-    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"boundary_error_slices":float(err),"boundary_error_mm":float(err)*float(item["gt"]["spacing_z_mm"]),"invalid":float(len(labels)==0)}
+    spacing=item["gt"].get("spacing_z_mm")
+    boundary_error_mm=float(err)*float(spacing) if spacing is not None else None
+    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"boundary_error_slices":float(err),"boundary_error_mm":boundary_error_mm,"invalid":float(len(labels)==0)}
 
 def eval_t4(item,pred): return {"pairwise_acc":float(pred.get("choice")==item["gt"]["answer"]),"invalid":float(pred.get("choice") is None)}
 
