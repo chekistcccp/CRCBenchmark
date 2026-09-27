@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 from PIL import Image
 from .metrics import hit_at_k, recall_at_k, reciprocal_rank, iou_xyxy, pointing_hit, binary_prf, normalized_distance
-from .utils import parse_choice_response, parse_json_object_response, parse_label_list_response
+from .utils import parse_choice_response, parse_label_list_response, parse_t2_response
 
 
 def _pred_map(rows): return {r["item_id"]:r for r in rows}
@@ -20,7 +20,7 @@ def eval_t1(item,pred):
     return {"hit_1":hit_at_k(ranked,positives,1),"hit_3":hit_at_k(ranked,positives,3),"hit_5":hit_at_k(ranked,positives,5),"recall_1":recall_at_k(ranked,positives,1),"recall_3":recall_at_k(ranked,positives,3),"recall_5":recall_at_k(ranked,positives,5),"mrr":reciprocal_rank(ranked,positives),"invalid":float(len(ranked)==0)}
 
 def eval_t2(item,pred):
-    p=parse_json_object_response(pred.get("raw_response",""))
+    p=parse_t2_response(pred.get("raw_response",""))
     if p is None: return {"pointing_acc":0.0,"box_iou":0.0,"norm_distance":1.0,"invalid":1.0}
     point=p.get("point"); box=p.get("box")
     valid_point=isinstance(point,list) and len(point)==2 and all(type(x) in (int,float) and np.isfinite(x) and 0<=x<=1000 for x in point)

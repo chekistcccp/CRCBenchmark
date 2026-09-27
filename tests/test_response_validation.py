@@ -7,7 +7,7 @@ from crcbenchmark.evaluate import eval_t1, eval_t2, eval_t4, eval_t5_groups
 from crcbenchmark.inference import manifest_fingerprint, validate_resume_predictions
 from crcbenchmark.preprocess import VolumeCase
 from crcbenchmark.tracks import build_t1
-from crcbenchmark.utils import parse_choice_response, parse_json_object_response, parse_label_list_response
+from crcbenchmark.utils import parse_choice_response, parse_json_object_response, parse_label_list_response, parse_t2_response
 
 
 def test_strict_label_parsing_rejects_reasoning_and_accepts_final_list():
@@ -24,6 +24,8 @@ def test_choice_parsing_rejects_explanations_but_accepts_transport_suffix():
     assert parse_choice_response("B<turn|>", ["A", "B"]) == "B"
     assert parse_choice_response("PRESENT<turn|>", ["PRESENT", "ABSENT"]) == "PRESENT"
     assert parse_choice_response("A looks suspicious but B wins", ["A", "B"]) is None
+    assert parse_choice_response("The answer is <|begin_of_box|>A<|end_of_box|>.", ["A", "B"]) == "A"
+    assert parse_choice_response("<|begin_of_box|>A<|end_of_box|> and <|begin_of_box|>B<|end_of_box|>", ["A", "B"]) is None
     item = {"choices": ["A", "B"], "gt": {"answer": "B"}}
     assert eval_t4(item, {"choice": "A", "raw_response": "B<turn|>"})["pairwise_acc"] == 1
 
@@ -38,6 +40,10 @@ def test_t2_requires_numeric_coordinates_and_structured_answer(tmp_path):
     assert parse_json_object_response(f'```json\n{good}\n```') == {"point": [500, 500], "box": [400, 400, 600, 600]}
     assert eval_t2(item, {"raw_response": good})["pointing_acc"] == 1
     assert eval_t2(item, {"raw_response": '{"point":["bad",500],"box":[400,400,600,600]}'})["invalid"] == 1
+    assert parse_t2_response('The location is <|begin_of_box|>{"point":[500,500],"box":[400,400,600,600]}<|end_of_box|>.') is not None
+    assert parse_t2_response('{"point":[500,500],"box":[500,500,500,500]}') is None
+    assert eval_t2(item, {"raw_response": '{"point":[500,500],"box":[500,500,500,500]}'})["invalid"] == 1
+    assert parse_label_list_response('Visible slices are <|begin_of_box|>["B","C"]<|end_of_box|>.', "ABCDEFGHI") == ["B", "C"]
 
 
 def test_t5_invalid_and_unrecognized_original_do_not_create_faithfulness_score():

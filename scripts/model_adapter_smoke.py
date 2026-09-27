@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
 import sys
 
@@ -11,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from crcbenchmark.config import load_yaml
 from crcbenchmark.io import read_jsonl
 from crcbenchmark.models.registry import build_model
-from crcbenchmark.utils import parse_choice_response, parse_json_object_response, parse_label_list_response
+from crcbenchmark.utils import parse_choice_response, parse_label_list_response, parse_t2_response
 
 
 def valid_answer(item, response):
@@ -19,15 +18,7 @@ def valid_answer(item, response):
     if track == "t1":
         return parse_label_list_response(response, "ABCDEFGHIJKL", 5) is not None
     if track == "t2":
-        answer = parse_json_object_response(response)
-        if not isinstance(answer, dict):
-            return False
-        point, box = answer.get("point"), answer.get("box")
-        return (
-            isinstance(point, list) and len(point) == 2
-            and isinstance(box, list) and len(box) == 4
-            and all(type(x) in (int, float) and math.isfinite(x) and 0 <= x <= 1000 for x in point + box)
-        )
+        return parse_t2_response(response) is not None
     if track == "t3":
         return parse_label_list_response(response, "ABCDEFGHI") is not None
     return parse_choice_response(response, item["choices"]) is not None
