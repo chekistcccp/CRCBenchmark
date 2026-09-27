@@ -17,3 +17,39 @@ def test_nested_masks():
     m=np.zeros((32,32),bool); m[8:24,8:24]=1
     a=nested_fraction_mask(m,0.25); b=nested_fraction_mask(m,0.75)
     assert a.sum()<=b.sum()<=m.sum()
+
+
+def test_t3_missing_spacing():
+    from crcbenchmark.evaluate import eval_t3
+
+    item = {
+        "gt": {
+            "positive_labels": ["B", "C"],
+            "slice_labels": {"A": 10, "B": 11, "C": 12, "D": 13},
+            "boundary_slice": 11,
+            "side": "entry",
+            "spacing_z_mm": None,
+        }
+    }
+    pred = {"parsed": ["B", "C"], "raw_response": '["B","C"]'}
+    out = eval_t3(item, pred)
+    assert out["boundary_error_slices"] == 0.0
+    assert out["boundary_error_mm"] is None
+
+
+def test_t3_with_spacing():
+    from crcbenchmark.evaluate import eval_t3
+
+    item = {
+        "gt": {
+            "positive_labels": ["B", "C"],
+            "slice_labels": {"A": 10, "B": 11, "C": 12, "D": 13},
+            "boundary_slice": 11,
+            "side": "entry",
+            "spacing_z_mm": 2.5,
+        }
+    }
+    pred = {"parsed": ["C"], "raw_response": '["C"]'}
+    out = eval_t3(item, pred)
+    assert out["boundary_error_slices"] == 1.0
+    assert out["boundary_error_mm"] == 2.5
