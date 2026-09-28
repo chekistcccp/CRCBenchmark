@@ -39,12 +39,13 @@ for rec in tqdm(records, desc=f"Building {a.experiment_name}"):
         built = build_all_tracks(case, out_root, cfg["tracks"], int(cfg["seed"]))
         for item in built:
             item["experiment_name"] = a.experiment_name
+            item["benchmark_split"] = rec.get("benchmark_split")
             if rec.get("dataset", "").upper() == "CARE":
                 item["care_label_mapping"] = {
                     "tumor_label_id": rec.get("tumor_label_id"),
                     "normal_label_id": rec.get("normal_label_id"),
-                    "canonicalization": "raw_label_gt_2_to_2",
-                    "semantic_status": "sensitivity_branch_unresolved",
+                    "canonicalization": "raw_label_gt_1_to_2_background_0",
+                    "semantic_status": "user_confirmed_mapping",
                 }
                 item["care_split"] = rec.get("split")
                 item["care_index_source"] = rec.get("care_index_source")

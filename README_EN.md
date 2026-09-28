@@ -1,212 +1,34 @@
-[中文](README.md) | **English**
+# ColoGround-Bench / CRCBenchmark
 
-# CRCBenchmark / ColoGround-Bench
+[中文](README.md)
 
-**ColoGround-Bench** is a training-free benchmark for evaluating whether open vision-language models truly **detect, localize, track, discriminate, and rely on** colorectal tumor evidence in CT.
+A zero-shot benchmark for open vision-language models on colorectal CT. Its five tracks test tumor-slice retrieval (T1), point and box grounding (T2), consecutive-slice recognition (T3), tumor-versus-normal region discrimination (T4), and exploratory response to lesion perturbation (T5). Tasks use real segmentation masks and do not invent clinical labels.
 
-The benchmark uses two public datasets with different roles:
+See [PROTOCOL.md](PROTOCOL.md) for the full v2.4 specification. The previous instructions are preserved in the [v2.3 archive](docs/README_EN_V2_3_ARCHIVE.md).
 
-- **MSD Task10 Colon** — full 3D NIfTI CT volumes with primary colon-tumor masks; used for volumetric retrieval, grounding, boundary consistency, and counterfactual testing.
-- **CARE** — the public packaged release used by U-SAM is handled conservatively as preprocessed 2D `image`/`label` NPZ pairs until its patient/slice mapping and label semantics are verified from the downloaded release.
+## Protocol v2.4
 
-The project intentionally does **not** create synthetic T stage, pathology, MSI, prognosis, necrosis, or other unavailable clinical labels.
+- **MSD Task10 Colon** provides 3D CT and tumor masks for T1/T2/T3/T5.
+- **CARE** uses the released 81-patient test cohort. The user-confirmed mapping is `0=background`, `1=normal tissue`, and every other foreground label `=tumor`; raw labels greater than 1 are mapped to canonical tumor class 2. This mapping has not been independently verified from the release's numeric codebook.
+- A deterministic, patient-disjoint split reserves 20 MSD and 20 CARE patients for development. Formal evaluation uses the remaining 106 MSD and 61 CARE patients. The adapter pilot uses development patients only.
+- MSD `colon_001` and CARE `case17105001`, used in v2.3 adapter pilots, are forced into development and excluded from formal evaluation.
+- Formal evaluation checks that all prediction IDs are unique, complete, and tied to the exact evaluation manifest fingerprint.
+- T1/T2/T3 report pre-specified simple baselines. T4 reports accuracy, valid-pair coverage, both-correct rate, swap consistency, and side preference. T5 reports original-image recognition coverage first; decision-only perturbation results are exploratory until candidate likelihoods have been validated.
+- Outputs default to `runs/protocol_v2_4/`, preserving v2.3 results.
 
-## Five benchmark tracks
+## Running on an allocated GPU
 
-| Track | Question | Dataset availability | Primary metric |
-|---|---|---|---|
-| T1 Lesion Retrieval | Can the VLM find tumor-bearing slices among same-patient hard negatives? | MSD; CARE only if patient/slice order is verified | Positive-slice Recall@3; Hit@3 separately |
-| T2 Visual Grounding | Can it point to the actual tumor and draw a useful box? | MSD + CARE after CARE label semantics are verified | Pointing Accuracy |
-| T3 Volumetric Consistency | Can it track tumor appearance/disappearance across consecutive slices? | MSD; CARE only if contiguous order is proven | Slice F1 |
-| T4 CARE Hard Negative | Can it distinguish tumor from normal rectal wall? | CARE only after label semantics are verified | Pairwise Accuracy |
-| T5 Counterfactual Faithfulness | Does removing the true lesion change the model more than removing matched control tissue? | MSD + CARE after CARE label semantics are verified | Continuous Faithfulness Gap only with validated likelihoods; decision scores separately |
-
-## Hardware target
-
-Primary target: **4 × NVIDIA RTX 3090 24 GB**. No task-specific VLM training or fine-tuning is performed.
-
-## Installation
+The repository does not submit Slurm jobs. Inside an allocated single-H20 or single-H100 GPU job:
 
 ```bash
-conda create -n crcbench python=3.11 -y
+cd CRCBenchmark
 conda activate crcbench
-pip install -r requirements.txt
-export PYTHONPATH=$PWD/src:$PYTHONPATH
+PILOT_ONLY=1 bash run.sh   # optional development-patient format check
+bash run.sh                # full benchmark; resumes completed items
 ```
 
-## Data layout
+Put raw archives under `data/raw/MSD/` and `data/raw/CARE/CARE.zip`, or set `MSD_ROOT` and `CARE_ROOT` to extracted directories. The runner prepares data, builds manifests, downloads the configured models, performs inference, and evaluates all tracks.
 
-### MSD Task10 Colon
+Use Python 3.11, PyTorch 2.13.0, torchvision 0.28.0, and CUDA 12.6. Install the PyTorch cu126 wheels before `pip install -r requirements.txt`.
 
-```text
-data/MSD/
-├── imagesTr/
-│   ├── colon_001.nii.gz
-│   └── ...
-└── labelsTr/
-    ├── colon_001.nii.gz
-    └── ...
-```
-
-### CARE: audit first, do not guess
-
-Place the downloaded archive without modifying its contents:
-
-```text
-data/raw/CARE/CARE.zip
-```
-
-The public U-SAM loader expects a packaged layout broadly equivalent to:
-
-```text
-CARE/
-├── train/
-│   ├── train_bbox.csv
-│   └── train_npz/*.npz
-└── test/
-    ├── test_bbox.csv
-    └── test_npz/*.npz
-```
-
-Each sampled NPZ is expected to contain at least `image` and `label`, but **this repository does not assume what label IDs 1/2 mean until the downloaded release is inspected and the semantics are verified**.
-
-Likewise, CARE is **not assumed to be a recoverable 3D volume**. T1/T3 are enabled for CARE only when patient identity and slice ordering can be proven from filenames or an explicit mapping CSV.
-
-## Step 1 — read-only CARE audit before extraction
-
-After downloading `CARE.zip`:
-
-```bash
-CARE_SOURCE=data/raw/CARE/CARE.zip bash run_data_audit.sh
-```
-
-or directly:
-
-```bash
-python scripts/inspect_care.py data/raw/CARE/CARE.zip \
-  --sample-n 20 \
-  --output manifests/care_audit.json
-```
-
-The audit reads the ZIP **without extracting the full dataset** and reports:
-
-- detected directory structure;
-- train/test NPZ counts;
-- `train_bbox.csv` / `test_bbox.csv` preview;
-- sampled NPZ keys;
-- `image.shape`, dtype, min/max;
-- `label.shape` and observed label values;
-- how many filenames can be conservatively parsed as `case_id + slice_index`;
-- inferred case counts and contiguous-order diagnostics;
-- safety status for CARE T1/T3 and label semantics.
-
-The audit deliberately keeps these scientific gates closed:
-
-```text
-label_semantics_verified: false
-patient_slice_mapping_verified: false
-care_3d_tracks_enabled: false
-```
-
-Seeing label values such as `[0, 1, 2]` does **not** by itself establish which foreground label is tumor or normal wall.
-
-## Step 2 — optional extraction and second audit
-
-```bash
-mkdir -p data/extracted/CARE
-unzip data/raw/CARE/CARE.zip -d data/extracted/CARE
-
-python scripts/inspect_care.py data/extracted/CARE \
-  --sample-n 50 \
-  --output manifests/care_audit_extracted.json
-```
-
-The code automatically searches through an extra wrapper directory such as `CARE/` if the archive contains one.
-
-## Step 3 — decide whether CARE patient-level reconstruction is possible
-
-### Case A: filenames fully prove patient + slice order
-
-If the audit shows 100% conservative filename parsing and sensible multi-slice patient groups, the filename convention can be considered a candidate mapping, but it should still be manually checked before freezing the benchmark.
-
-### Case B: filenames do not prove patient + slice order
-
-Do **not** infer it from numeric file order. Obtain or construct an explicit mapping:
-
-```csv
-case_id,slice_index,npz_path,split,slice_spacing,pixel_spacing_y,pixel_spacing_x
-patient001,0,train/train_npz/xxx.npz,train,1.25,0.75,0.75
-```
-
-Without a verified mapping, CARE T1/T3 remain disabled and slice-level samples must not be treated as independent patients for publication statistics.
-
-## Step 4 — index datasets only after CARE semantics are verified
-
-MSD can be indexed immediately:
-
-```bash
-python scripts/index_datasets.py \
-  --msd-root data/MSD \
-  --output manifests/cases.jsonl
-```
-
-CARE requires explicit verified label IDs. No default is accepted:
-
-```bash
-python scripts/index_datasets.py \
-  --msd-root data/MSD \
-  --care-root data/extracted/CARE \
-  --care-mapping data/extracted/CARE/care_index.csv \
-  --care-tumor-label <VERIFIED_ID> \
-  --care-normal-label <VERIFIED_ID> \
-  --output manifests/cases.jsonl
-```
-
-If filenames themselves are verified to encode patient/slice order, `--care-mapping` can be omitted.
-
-## Important CARE intensity rule
-
-MSD is original CT and uses HU windowing. The public CARE NPZ images are treated as **preprocessed packaged images** unless original HU semantics are independently verified.
-
-Therefore the code does **not** blindly apply `WL=50 / WW=400` to CARE arrays. Normalized CARE arrays are mapped directly to 8-bit images; non-normalized packaged arrays use robust display scaling rather than pretending they are Hounsfield Units.
-
-## Build and run benchmark
-
-After indexing:
-
-```bash
-python scripts/build_benchmark.py \
-  --cases manifests/cases.jsonl \
-  --config configs/benchmark.yaml \
-  --output manifests/benchmark_v1.jsonl
-```
-
-Full run:
-
-```bash
-export MSD_ROOT=/absolute/path/to/MSD
-
-# Enable these only AFTER the CARE audit and semantic verification:
-# export CARE_ROOT=/absolute/path/to/CARE
-# export CARE_MAPPING=/absolute/path/to/care_index.csv
-# export CARE_TUMOR_LABEL=<VERIFIED_ID>
-# export CARE_NORMAL_LABEL=<VERIFIED_ID>
-
-bash run_benchmark.sh
-```
-
-## Reproducibility and safety rules
-
-- Ground-truth masks are never overlaid on model inputs.
-- The benchmark manifest is frozen before model comparison.
-- Greedy deterministic decoding is used (`do_sample=False`).
-- Invalid outputs are retained as failures; they are not manually repaired.
-- No LLM-as-a-Judge is used.
-- No chain-of-thought quality score is used.
-- Patient is the statistical sampling unit.
-- CARE slices are never promoted to patient-level samples unless patient identity is verified.
-- CARE label IDs are never assigned medical meaning by assumption.
-- CARE packaged image values are never assumed to be HU without evidence.
-- No arbitrary weighted overall leaderboard score is computed.
-
-See [PROTOCOL.md](PROTOCOL.md) for the scientific design boundaries.
+Report patient-level intervals, invalid-response rates, task baselines, and task coverage alongside model scores. Low scores are valid benchmark findings; however, output-format failures must not be misrepresented as visual incompetence. T5 continuous Faithfulness Gap remains unavailable without validated likelihood scores.

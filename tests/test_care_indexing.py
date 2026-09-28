@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from crcbenchmark.indexing import index_care, index_msd
+from crcbenchmark.preprocess import load_care_npz_series
 
 
 def _touch(path: Path):
@@ -48,16 +50,24 @@ def _make_release(root: Path):
 
 def test_primary_default_uses_test_txt_only(tmp_path):
     _make_release(tmp_path)
-    rows = index_care(
-        tmp_path,
-        tumor_label_id=2,
-        normal_label_id=1,
-    )
+    rows = index_care(tmp_path)
     assert len(rows) == 1
     assert rows[0]["split"] == "test"
     assert rows[0]["case_id"] == "caseC"
     assert rows[0]["care_index_source"] == "txt"
     assert [x["slice_index"] for x in rows[0]["slices"]] == [100, 101]
+    assert (rows[0]["normal_label_id"], rows[0]["tumor_label_id"]) == (1, 2)
+
+
+def test_care_raw_foreground_other_than_one_is_tumor(tmp_path):
+    path = tmp_path / "sample.npz"
+    np.savez(path, image=np.zeros((2, 3), dtype=np.float32), label=np.array([[0, 1, 2], [3, 4, 1]]))
+    case = load_care_npz_series([{"npz_path": str(path), "slice_index": 0}], "case")
+    assert case.label[0].tolist() == [[0, 1, 2], [2, 2, 1]]
+    assert case.normal_mask()[0].sum() == 2
+    assert case.tumor_mask()[0].sum() == 3
+    with pytest.raises(ValueError, match="normal label 1"):
+        load_care_npz_series([{"npz_path": str(path), "slice_index": 0}], "case", tumor_label_id=1, normal_label_id=2)
 
 
 def test_explicit_train_and_test_txt(tmp_path):

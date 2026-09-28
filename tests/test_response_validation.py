@@ -3,8 +3,8 @@ import pytest
 
 from PIL import Image
 
-from crcbenchmark.evaluate import eval_t1, eval_t2, eval_t4, eval_t5_groups
-from crcbenchmark.inference import manifest_fingerprint, validate_resume_predictions
+from crcbenchmark.evaluate import eval_t1, eval_t2, eval_t3, eval_t4, eval_t5_groups, patient_aggregate
+from crcbenchmark.inference import manifest_fingerprint, validate_evaluation_inputs, validate_resume_predictions
 from crcbenchmark.preprocess import VolumeCase
 from crcbenchmark.tracks import build_t1
 from crcbenchmark.utils import parse_choice_response, parse_json_object_response, parse_label_list_response, parse_t2_response
@@ -44,6 +44,32 @@ def test_t2_requires_numeric_coordinates_and_structured_answer(tmp_path):
     assert parse_t2_response('{"point":[500,500],"box":[500,500,500,500]}') is None
     assert eval_t2(item, {"raw_response": '{"point":[500,500],"box":[500,500,500,500]}'})["invalid"] == 1
     assert parse_label_list_response('Visible slices are <|begin_of_box|>["B","C"]<|end_of_box|>.', "ABCDEFGHI") == ["B", "C"]
+
+
+def test_benchmark_baselines_and_t4_swap_pair(tmp_path):
+    mask = np.zeros((10, 10), dtype=np.uint8)
+    mask[5, 5] = 255
+    mask_path = tmp_path / "mask.png"
+    Image.fromarray(mask).save(mask_path)
+    t2 = {"gt_mask_path": str(mask_path), "gt": {"point_norm": [500, 500], "box_norm": [400, 400, 600, 600]}}
+    scored = eval_t2(t2, {"raw_response": "invalid"})
+    assert scored["invalid"] == 1 and scored["uniform_pointing"] == 0.01
+    assert scored["center_pointing"] == 1
+
+    t3 = {"gt": {"positive_labels": ["E", "F"], "slice_labels": dict(zip("ABCDEFGHI", range(9))), "boundary_slice": 4, "side": "entry"}}
+    scored = eval_t3(t3, {"raw_response": '["E"]'})
+    assert scored["center_e_boundary_error_slices"] == 0
+    assert scored["all_slices_boundary_error_slices"] == 4
+
+    items = []
+    for swap, response, truth in ((0, "A", "A"), (1, "A", "B")):
+        item = {"choices": ["A", "B"], "gt": {"answer": truth, "swap": swap}}
+        items.append({"track": "t4", "dataset": "CARE", "case_id": "case", **eval_t4(item, {"raw_response": response})})
+    patient = patient_aggregate(items)[0]
+    assert patient["pairwise_acc"] == 0.5
+    assert patient["pair_valid"] == 1
+    assert patient["swap_consistency"] == 0
+    assert patient["pair_both_correct"] == 0
 
 
 def test_t5_invalid_and_unrecognized_original_do_not_create_faithfulness_score():
@@ -96,3 +122,16 @@ def test_resume_rejects_predictions_from_changed_manifest(tmp_path):
     with pytest.raises(RuntimeError, match="fresh prediction output path"):
         validate_resume_predictions(old, manifest_fingerprint(changed), tmp_path / "old.jsonl")
     validate_resume_predictions(old, manifest_fingerprint(first), tmp_path / "old.jsonl")
+
+
+def test_formal_evaluation_rejects_dev_and_missing_predictions(tmp_path):
+    manifest = [{"item_id": "a", "benchmark_split": "eval"}]
+    pred = [{"item_id": "a", "manifest_sha256": manifest_fingerprint(manifest)}]
+    validate_evaluation_inputs(manifest, pred, tmp_path / "pred.jsonl")
+    with pytest.raises(RuntimeError, match="missing"):
+        validate_evaluation_inputs(manifest, [], tmp_path / "pred.jsonl")
+    dev = [{"item_id": "a", "benchmark_split": "dev"}]
+    with pytest.raises(RuntimeError, match="benchmark_split=eval"):
+        validate_evaluation_inputs(dev, [{"item_id": "a", "manifest_sha256": manifest_fingerprint(dev)}], tmp_path / "pred.jsonl")
+    with pytest.raises(RuntimeError, match="benchmark_split=eval"):
+        validate_evaluation_inputs([{"item_id": "a"}], pred, tmp_path / "pred.jsonl")

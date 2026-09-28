@@ -11,6 +11,9 @@ paths:
 splits:
   dev_msd: 20
   dev_care: 20
+  # These patients appeared in v2.3 adapter pilots and must stay out of eval.
+  pilot_case_msd: colon_001
+  pilot_case_care: case17105001
 tracks:
   t1:
     positives: 3

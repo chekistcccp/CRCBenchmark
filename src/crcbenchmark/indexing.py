@@ -172,18 +172,13 @@ def _care_split_rows(root: Path, split: str, index_source: str):
 def index_care(
     root,
     mapping_csv=None,
-    tumor_label_id=None,
-    normal_label_id=None,
+    tumor_label_id=2,
+    normal_label_id=1,
     index_source="txt",
     splits=("test",),
 ):
-    if tumor_label_id is None:
-        raise ValueError(
-            "CARE label semantics have not been explicitly configured. Run "
-            "scripts/inspect_care.py first, verify which canonical label ID is "
-            "tumor/normal, then pass --care-tumor-label and --care-normal-label. "
-            "No default CARE label semantics are assumed."
-        )
+    if tumor_label_id != 2 or normal_label_id != 1:
+        raise ValueError("CARE v2.4 requires background=0, normal=1, tumor=all other foreground labels (canonical 2).")
 
     root = resolve_care_root(Path(root))
     slice_rows = []
@@ -266,8 +261,8 @@ def build_case_index(
     msd_root,
     care_root,
     care_mapping=None,
-    care_tumor_label=None,
-    care_normal_label=None,
+    care_tumor_label=2,
+    care_normal_label=1,
     care_index_source="txt",
     care_splits=("test",),
 ):

@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v2.3
+# ColoGround-Bench Protocol v2.4
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -7,8 +7,8 @@ ColoGround-Bench is a training-free benchmark for open vision-language models on
 1. **T1 Lesion Retrieval** — rank tumor-bearing slices among same-patient hard negatives. Primary metric: true positive-slice Recall@3; Hit@3 is reported separately.
 2. **T2 Visual Grounding** — output a normalized point and bounding box on tumor-positive slices. Primary metric: Pointing Accuracy.
 3. **T3 Volumetric Consistency** — identify tumor-positive slices around entry/exit boundaries. Primary metric: patient-level Slice F1.
-4. **T4 CARE Hard Negative** — same-patient tumor ROI versus normal rectal wall ROI. Primary metric: pairwise accuracy and swap consistency.
-5. **T5 Counterfactual Faithfulness** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. Continuous Faithfulness Gap requires validated candidate likelihoods. Decision-only scores are reported separately and only for groups where the original image is recognized as tumor-present; unparseable answers do not become ABSENT.
+4. **T4 CARE Hard Negative** — same-patient tumor ROI versus normal rectal wall ROI. Report pairwise accuracy, valid-pair coverage, both-correct rate, swap consistency, and side preference.
+5. **T5 Exploratory Counterfactual Response** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. The original PRESENT recognition rate is the coverage gate. Continuous Faithfulness Gap remains unavailable until candidate likelihoods are validated; decision-only scores are reported separately for recognized originals.
 
 ## Dataset-specific roles
 
@@ -46,27 +46,17 @@ This choice is reproducible and matches the published test-cohort size exactly. 
 
 The released train cohort is **not included in the primary benchmark** because its released slice/patient counts do not reconcile cleanly with the publication. Train data may be used only for development, code debugging, or supplementary sensitivity analysis. The 6,424-slice bbox-defined test subset may likewise be reported as a supplementary sensitivity cohort, but not as the primary CARE result.
 
-The packaged images are 512 × 512 with values in [0,1]. Raw sampled labels include values 0,1,2,3. CRCBenchmark mirrors the official U-SAM preprocessing rule `mask[mask > 2] = 2`, producing canonical labels 0,1,2. The medical meaning of canonical classes 1 and 2 remains an explicit semantic gate until independently verified.
+The packaged images are 512 × 512 with values in [0,1]. Raw sampled labels include values 0,1,2,3. The user-confirmed interpretation for this protocol is `0=background`, `1=normal tissue`, and all other positive labels `=tumor`. Labels greater than 1 are mapped to canonical class 2, consistent with the official U-SAM collapse of values greater than 2. This mapping is user supplied; the released numeric codebook has not been independently verified from publisher documentation.
 
 The CARE release used by the public U-SAM loader is treated conservatively as preprocessed 2D NPZ image-label pairs until the actual downloaded archive has been audited.
 
 The benchmark must not assume any of the following without evidence:
 
 - that CARE NPZ pixel values are original HU;
-- that foreground value `1` is normal wall;
-- that foreground value `2` is tumor;
 - that numeric NPZ filenames correspond to patient or slice order;
 - that adjacent files form a contiguous 3D volume.
 
-CARE activation therefore follows a mandatory two-gate procedure.
-
-### Gate 1 — label semantics
-
-Run `scripts/inspect_care.py` and verify the label mapping against the official release documentation/examples. CARE indexing requires explicit `--care-tumor-label`; T4 additionally requires an explicit verified normal-wall label.
-
-No default CARE foreground semantics are embedded in the code.
-
-### Gate 2 — patient/slice mapping
+### Patient/slice mapping
 
 T1/T3 and all patient-level CARE statistics require a proven `case_id` and `slice_index` mapping.
 
@@ -87,7 +77,7 @@ slice_spacing,pixel_spacing_y,pixel_spacing_x
 
 If filenames do not fully prove patient identity and ordering, the indexer fails with an explicit error instead of silently fabricating 3D groups.
 
-For the currently audited release, filename parsing provides a strong patient/slice mapping candidate. CARE T1 becomes eligible after label semantics are verified. CARE T3 uses only locally consecutive source-slice windows; gaps elsewhere in the same retained patient series do not invalidate an otherwise consecutive local window. Individual slices are never treated as independent patients in primary statistical inference.
+For the currently audited release, filename parsing provides a strong patient/slice mapping candidate. CARE T3 uses only locally consecutive source-slice windows; gaps elsewhere in the same retained patient series do not invalidate an otherwise consecutive local window. Individual slices are never treated as independent patients in primary statistical inference.
 
 ## CARE image intensity handling
 
@@ -103,13 +93,7 @@ Before extraction, a downloaded archive can be inspected using:
 python scripts/inspect_care.py data/raw/CARE/CARE.zip --output manifests/care_audit_v3.json
 ```
 
-The audit reads archive members, bbox CSV files and a deterministic sample of NPZ files without extracting the full archive. It reports observed structures and values but intentionally marks:
-
-- `label_semantics_verified = false`;
-- `patient_slice_mapping_verified = false`;
-- `care_3d_tracks_enabled = false`.
-
-These flags are scientific safeguards, not parser failures.
+The audit reads archive members, bbox CSV files and a deterministic sample of NPZ files without extracting the full archive. Its historical `label_semantics_verified=false` flag means the archive itself did not resolve the codebook; protocol v2.4 uses the mapping supplied by the user.
 
 ## Non-negotiable evaluation rules
 
@@ -120,9 +104,12 @@ These flags are scientific safeguards, not parser failures.
 - Main generation is greedy (`do_sample=False`).
 - All primary statistics are patient-level.
 - All models run the same frozen benchmark manifest.
+- Development and formal-evaluation patients are disjoint. The output-format pilot uses development patients only.
+- MSD `colon_001` and CARE `case17105001`, previously used for v2.3 adapter pilots, are forced into development cohorts and excluded from formal evaluation.
 - Invalid responses are retained as failures and separately counted.
+- T1/T2/T3 include pre-specified random, spatial, and trivial-selection baselines respectively.
 - No aggregate weighted leaderboard score is created.
-- CARE label semantics are never guessed from numeric IDs alone.
+- CARE uses the user-confirmed label mapping and records its provenance.
 - CARE 3D continuity is never inferred from file order alone.
 - MSD and CARE results are reported separately where their representations or eligible tracks differ; they are not naively pooled into a pseudo cross-center score.
 
@@ -152,7 +139,7 @@ The canonical experiment entry point is:
 bash run.sh
 ```
 
-Protocol v2.3 writes new manifests, artifacts, predictions, and results under `runs/protocol_v2_3/` by default. Prediction resume requires a matching manifest SHA-256 fingerprint. A GPU output-format pilot can be run with `PILOT_ONLY=1 bash run.sh`; it checks one item per available track and exits before full inference.
+Protocol v2.4 writes new manifests, artifacts, predictions, and results under `runs/protocol_v2_4/` by default, preserving v2.3. A stable SHA-256 patient split assigns 20 MSD and 20 CARE cases to development and the remainder to formal evaluation. Prediction resume and formal evaluation require matching manifest SHA-256 fingerprints. A GPU output-format pilot can be run with `PILOT_ONLY=1 bash run.sh`; it uses development patients only and exits before full inference.
 
 The repository is intentionally scheduler-agnostic. `run.sh` never calls `sbatch`, `srun`, `salloc`, or any other Slurm command. GPU/node allocation and job submission are performed manually by the user or institutional scheduler configuration.
 
@@ -163,20 +150,9 @@ Before inference, `run.sh` automatically downloads every model listed in `config
 Inference outputs are checkpointed incrementally at item level. Re-running `run.sh` after preemption reuses completed predictions and continues unfinished items. A debugging-only `ONLY_MODELS` override is supported, but the primary benchmark protocol runs all configured models.
 
 
-## CARE unresolved-label sensitivity protocol
+## CARE label protocol
 
-Because the released CARE data expose canonical foreground labels 1 and 2 but the available release documentation does not yet provide a sufficiently explicit numeric-to-medical-class statement, the computational protocol does not block on a single assumed mapping.
-
-Two complete, pre-specified CARE semantic branches are constructed from the same frozen 81-patient / 6,461-slice test cohort:
-
-1. `care_tumor1_normal2`: canonical class 1 is treated as tumor and class 2 as normal rectal tissue;
-2. `care_tumor2_normal1`: canonical class 2 is treated as tumor and class 1 as normal rectal tissue.
-
-Raw CARE label values greater than 2 are first canonicalized with the official U-SAM rule `label > 2 -> 2`. Each semantic branch is built into a separate benchmark manifest and separate artifact directory, and every configured VLM is evaluated on both branches.
-
-The two branches are semantic sensitivity analyses, not competing clinical ground truths. The correct medical class mapping must not be selected on the basis of model accuracy, grounding, or faithfulness performance. If authoritative annotation evidence later establishes the numeric mapping, the matching branch becomes the primary CARE result and the inverted branch is retained as a label-inversion sensitivity/control analysis.
-
-MSD is evaluated only once and is not duplicated across the two CARE branches.
+The 81-patient CARE test cohort is split at patient level into 20 development and 61 formal-evaluation patients. Only one mapping is run: `0=background`, `1=normal`, `raw labels >1=tumor`, canonically stored as 2. The former inverted-label branch remains in the archived v2.3 outputs and is not part of v2.4. This mapping was provided by the user; a publication should state that provenance rather than claim that the released documentation independently proves it.
 
 
 ## Automatic data preparation

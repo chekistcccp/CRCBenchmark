@@ -47,21 +47,14 @@ def main():
             "msd": {
                 "description": "MSD Task10 Colon, fixed label semantics",
             },
-            "care_tumor1_normal2": {
-                "tumor_label_id": 1,
-                "normal_label_id": 2,
-                "semantic_status": "unresolved_sensitivity_branch",
-            },
-            "care_tumor2_normal1": {
+            "care": {
                 "tumor_label_id": 2,
                 "normal_label_id": 1,
-                "semantic_status": "unresolved_sensitivity_branch",
+                "raw_label_rule": "0=background, 1=normal, all other foreground=tumor",
+                "semantic_status": "user_confirmed_mapping",
             },
         },
-        "warning": (
-            "Do not determine CARE label semantics by choosing the branch with "
-            "better model performance. Resolve semantics from annotation evidence."
-        ),
+        "care_mapping_source": "user_confirmed; not independently verified from release documentation",
         "entries": entries,
     }
 

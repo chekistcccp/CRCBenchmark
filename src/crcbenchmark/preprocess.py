@@ -81,12 +81,9 @@ def _optional_spacing(row, key):
     return x if np.isfinite(x) and x > 0 else float("nan")
 
 
-def load_care_npz_series(rows, case_id, split=None, tumor_label_id=None, normal_label_id=None):
-    if tumor_label_id is None:
-        raise ValueError(
-            "CARE tumor label ID is not configured. Run the CARE audit first; then index with "
-            "--care-tumor-label and --care-normal-label only after verifying the official semantics."
-        )
+def load_care_npz_series(rows, case_id, split=None, tumor_label_id=2, normal_label_id=1):
+    if tumor_label_id != 2 or normal_label_id != 1:
+        raise ValueError("CARE v2.4 requires normal label 1 and all other foreground labels as tumor.")
     rows = sorted(rows, key=lambda x: int(x["slice_index"]))
     images, labels, indices = [], [], []
     for r in rows:
@@ -100,10 +97,13 @@ def load_care_npz_series(rows, case_id, split=None, tumor_label_id=None, normal_
             rounded = np.rint(raw)
             if not np.allclose(raw, rounded):
                 raise ValueError(f"CARE label is not integer-valued: {r['npz_path']}")
-            # Match the official U-SAM CARE loader:
-            # raw label values > 2 are collapsed to canonical class 2.
+            # User-confirmed semantics: 0=background, 1=normal tissue,
+            # every other positive label=tumor. Preserve the official loader's
+            # canonical class 2 for all tumor pixels.
             lab = rounded.astype(np.int16)
-            lab[lab > 2] = 2
+            if np.any(lab < 0):
+                raise ValueError(f"CARE label has negative values: {r['npz_path']}")
+            lab[lab > 1] = 2
             images.append(img)
             labels.append(lab)
         indices.append(int(r["slice_index"]))
@@ -125,7 +125,7 @@ def load_care_npz_series(rows, case_id, split=None, tumor_label_id=None, normal_
     )
     c.slice_indices = indices
     c.source_slice_indices = indices
-    c.care_label_rule = "raw_gt2_to_2"
+    c.care_label_rule = "background_0_normal_1_tumor_gt1_to_2"
     return c
 
 

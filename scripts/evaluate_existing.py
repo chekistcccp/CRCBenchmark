@@ -9,14 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from crcbenchmark.config import load_yaml
 from crcbenchmark.io import read_jsonl, write_jsonl, write_json
+from crcbenchmark.inference import validate_evaluation_inputs
 from crcbenchmark.evaluate import eval_items, eval_t5_groups, patient_aggregate
 from crcbenchmark.stats import summarize_patient_rows
 
 
 EXPERIMENTS = (
     "msd",
-    "care_tumor1_normal2",
-    "care_tumor2_normal1",
+    "care",
 )
 
 
@@ -24,13 +24,7 @@ def evaluate_one(manifest_path: Path, pred_path: Path, out_dir: Path, bootstrap:
     manifest = read_jsonl(manifest_path)
     preds = read_jsonl(pred_path)
 
-    expected = {x["item_id"] for x in manifest}
-    observed = {x["item_id"] for x in preds}
-    missing = expected - observed
-    if missing:
-        raise RuntimeError(
-            f"{pred_path}: missing {len(missing)} of {len(expected)} predictions."
-        )
+    validate_evaluation_inputs(manifest, preds, pred_path)
 
     items = eval_items(manifest, preds) + eval_t5_groups(manifest, preds)
     patients = patient_aggregate(items)
@@ -56,13 +50,14 @@ def main():
     p.add_argument("--results-root", default="results")
     p.add_argument("--manifest-root", default="manifests")
     p.add_argument("--bootstrap", type=int, default=2000)
+    p.add_argument("--skip-care", action="store_true", help="Evaluate MSD only")
     a = p.parse_args()
 
     cfg = load_yaml(a.models_config)
     failures = []
 
     for model in cfg["models"]:
-        for exp in EXPERIMENTS:
+        for exp in EXPERIMENTS[:1] if a.skip_care else EXPERIMENTS:
             manifest = Path(a.manifest_root) / f"benchmark_{exp}.jsonl"
             pred = Path(a.predictions_root) / model / exp / "all.jsonl"
             out = Path(a.results_root) / model / exp

@@ -27,6 +27,21 @@ def validate_resume_predictions(existing: list[dict], fingerprint: str, output_p
         )
 
 
+def validate_evaluation_inputs(manifest: list[dict], predictions: list[dict], prediction_path: Path) -> None:
+    expected = [row["item_id"] for row in manifest]
+    observed = [row["item_id"] for row in predictions]
+    if len(expected) != len(set(expected)) or len(observed) != len(set(observed)):
+        raise RuntimeError("Evaluation manifest or predictions contain duplicate item IDs")
+    if set(expected) != set(observed):
+        missing = set(expected) - set(observed)
+        extra = set(observed) - set(expected)
+        raise RuntimeError(f"Evaluation predictions do not match manifest: {len(missing)} missing, {len(extra)} extra")
+    splits = {row.get("benchmark_split") for row in manifest}
+    if splits != {"eval"}:
+        raise RuntimeError("Formal evaluation accepts only benchmark_split=eval items")
+    validate_resume_predictions(predictions, manifest_fingerprint(manifest), prediction_path)
+
+
 def run_manifest(model, rows, out_path, shard_index=0, num_shards=1, resume=True):
     out_path = Path(out_path)
     fingerprint = manifest_fingerprint(rows)
