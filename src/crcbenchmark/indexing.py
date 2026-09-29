@@ -178,7 +178,7 @@ def index_care(
     splits=("test",),
 ):
     if tumor_label_id != 2 or normal_label_id != 1:
-        raise ValueError("CARE v2.4 requires background=0, normal=1, tumor=all other foreground labels (canonical 2).")
+        raise ValueError("CARE v2.5 requires background=0, normal=1, tumor=all other foreground labels (canonical 2).")
 
     root = resolve_care_root(Path(root))
     slice_rows = []

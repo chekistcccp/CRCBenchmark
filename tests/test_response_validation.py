@@ -6,7 +6,8 @@ from PIL import Image
 from crcbenchmark.evaluate import eval_t1, eval_t2, eval_t3, eval_t4, eval_t5_groups, patient_aggregate
 from crcbenchmark.inference import manifest_fingerprint, validate_evaluation_inputs, validate_resume_predictions
 from crcbenchmark.preprocess import VolumeCase
-from crcbenchmark.tracks import build_t1
+from crcbenchmark.tracks import build_t1, build_t3
+from crcbenchmark.benchmark_audit import audit_benchmark_cohorts
 from crcbenchmark.utils import parse_choice_response, parse_json_object_response, parse_label_list_response, parse_t2_response
 
 
@@ -18,6 +19,10 @@ def test_strict_label_parsing_rejects_reasoning_and_accepts_final_list():
     item = {"gt": {"negative_only": False, "positive_labels": ["A"]}}
     out = eval_t1(item, {"raw_response": "The answer is A or B", "parsed": None})
     assert out["invalid"] == 1 and out["hit_3"] == 0
+    assert np.isnan(out["conditional_recall_3"])
+    abstained = eval_t1(item, {"raw_response": '["NONE"]'})
+    assert abstained["invalid"] == 0 and abstained["abstained"] == 1
+    assert abstained["conditional_recall_3"] == 0
 
 
 def test_choice_parsing_rejects_explanations_but_accepts_transport_suffix():
@@ -39,6 +44,7 @@ def test_t2_requires_numeric_coordinates_and_structured_answer(tmp_path):
     good = '{"point":[500,500],"box":[400,400,600,600]}'
     assert parse_json_object_response(f'```json\n{good}\n```') == {"point": [500, 500], "box": [400, 400, 600, 600]}
     assert eval_t2(item, {"raw_response": good})["pointing_acc"] == 1
+    assert eval_t2(item, {"raw_response": good})["conditional_pointing_acc"] == 1
     assert eval_t2(item, {"raw_response": '{"point":["bad",500],"box":[400,400,600,600]}'})["invalid"] == 1
     assert parse_t2_response('The location is <|begin_of_box|>{"point":[500,500],"box":[400,400,600,600]}<|end_of_box|>.') is not None
     assert parse_t2_response('{"point":[500,500],"box":[500,500,500,500]}') is None
@@ -58,8 +64,11 @@ def test_benchmark_baselines_and_t4_swap_pair(tmp_path):
 
     t3 = {"gt": {"positive_labels": ["E", "F"], "slice_labels": dict(zip("ABCDEFGHI", range(9))), "boundary_slice": 4, "side": "entry"}}
     scored = eval_t3(t3, {"raw_response": '["E"]'})
-    assert scored["center_e_boundary_error_slices"] == 0
+    assert scored["fixed_center_boundary_error_slices"] == 0
     assert scored["all_slices_boundary_error_slices"] == 4
+    assert scored["conditional_slice_f1"] == scored["slice_f1"]
+    assert eval_t3(t3, {"raw_response": '["NONE"]'})["invalid"] == 0
+    assert np.isnan(eval_t3(t3, {"raw_response": "Visible on E"})["conditional_slice_f1"])
 
     items = []
     for swap, response, truth in ((0, "A", "A"), (1, "A", "B")):
@@ -113,6 +122,63 @@ def test_t1_omits_only_negative_question_when_pool_is_9_to_11(tmp_path):
     rows = build_t1(case, tmp_path, {"positives": 3, "negatives": 9, "permutations": 1}, np.random.default_rng(1))
     assert len(rows) == 1
     assert rows[0]["gt"]["negative_only"] is False
+
+
+def test_t3_boundary_position_varies_and_tracks_true_boundary(tmp_path):
+    image = np.zeros((26, 8, 8), dtype=np.float32)
+    label = np.zeros_like(image, dtype=np.uint8)
+    label[8:16, 2:5, 2:5] = 1
+    config = {"radius": 4, "boundary_slots": [2, 3, 4, 5, 6]}
+    slots = set()
+    for i in range(12):
+        case = VolumeCase("MSD", f"case{i}", image, label, (1.0, 1.0, 1.0), tumor_label_id=1)
+        rows = build_t3(case, tmp_path, config, seed=20260924)
+        assert len(rows) == 2
+        for row in rows:
+            gt = row["gt"]
+            source = list(gt["slice_labels"].values())
+            assert source == list(range(source[0], source[0] + 9))
+            assert source[gt["boundary_slot"]] == gt["boundary_slice"]
+            assert "E" not in row["prompt"]
+            slots.add(gt["boundary_slot"])
+    assert len(slots) > 1
+
+
+def test_t3_care_windows_never_bridge_missing_source_slice(tmp_path):
+    source = list(range(100, 110)) + list(range(111, 121))
+    image = np.zeros((len(source), 8, 8), dtype=np.float32)
+    label = np.zeros_like(image, dtype=np.uint8)
+    label[[source.index(z) for z in (105, 106, 107)], 2:5, 2:5] = 2
+    case = VolumeCase("CARE", "gapped", image, label, (float("nan"),) * 3,
+                      tumor_label_id=2, normal_label_id=1, intensity_mode="normalized")
+    case.source_slice_indices = source
+    rows = build_t3(case, tmp_path, {"radius": 4, "boundary_slots": [2, 3, 4, 5, 6]}, seed=9)
+    assert len(rows) == 2
+    for row in rows:
+        selected = list(row["gt"]["slice_labels"].values())
+        assert 110 not in selected
+        assert selected == list(range(selected[0], selected[0] + 9))
+
+
+def test_manifest_audit_rejects_fixed_t3_boundary_and_patient_overlap():
+    def case(case_id, split):
+        return {"case_id": case_id, "benchmark_split": split}
+    def item(case_id, split, slot):
+        return {"item_id": case_id, "case_id": case_id, "benchmark_split": split,
+                "track": "t3", "gt": {"boundary_slot": slot, "boundary_slice": slot,
+                "positive_labels": ["ABCDEFGHI"[slot]],
+                "slice_labels": dict(zip("ABCDEFGHI", range(9)))}}
+    dev = [case("dev", "dev")]
+    evaluation = [case("e1", "eval"), case("e2", "eval")]
+    dev_items = [item("dev", "dev", 4)]
+    eval_items = [item("e1", "eval", 2), item("e2", "eval", 6)]
+    report = audit_benchmark_cohorts(dev, evaluation, dev_items, eval_items)
+    assert report["eval"]["t3_boundary_slots"] == {2: 1, 6: 1}
+    with pytest.raises(ValueError, match="fixed boundary"):
+        audit_benchmark_cohorts(dev, evaluation, dev_items, [item("e1", "eval", 4), item("e2", "eval", 4)])
+    with pytest.raises(ValueError, match="overlap"):
+        audit_benchmark_cohorts(dev, [case("dev", "eval"), case("e2", "eval")], dev_items,
+                                [item("dev", "eval", 2), item("e2", "eval", 6)])
 
 
 def test_resume_rejects_predictions_from_changed_manifest(tmp_path):

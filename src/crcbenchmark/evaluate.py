@@ -12,20 +12,23 @@ def _labels_from_parsed(pred, allowed="ABCDEFGHIJKL", max_items=None):
     return parse_label_list_response(pred.get("raw_response", ""), allowed, max_items) or []
 
 def eval_t1(item,pred):
-    ranked=_labels_from_parsed(pred,max_items=5); gt=item["gt"]
+    parsed=parse_label_list_response(pred.get("raw_response", ""), "ABCDEFGHIJKL", 5)
+    ranked=[] if parsed is None or parsed==["NONE"] else parsed
+    invalid=float(parsed is None)
+    gt=item["gt"]
     if gt["negative_only"]:
-        none=ranked==["NONE"]
-        return {"none_specificity":float(none),"invalid":float(not ranked and not none)}
-    if ranked==["NONE"]: ranked=[]
+        none=float(parsed==["NONE"])
+        return {"none_specificity":none,"conditional_none_specificity":none if not invalid else float("nan"),"invalid":invalid}
     positives=set(gt["positive_labels"])
     n = 12
-    return {"hit_1":hit_at_k(ranked,positives,1),"hit_3":hit_at_k(ranked,positives,3),"hit_5":hit_at_k(ranked,positives,5),"recall_1":recall_at_k(ranked,positives,1),"recall_3":recall_at_k(ranked,positives,3),"recall_5":recall_at_k(ranked,positives,5),"mrr":reciprocal_rank(ranked,positives),"invalid":float(len(ranked)==0),"random_hit_3":1-comb(n-len(positives),3)/comb(n,3),"random_recall_3":3/n}
+    recall3=recall_at_k(ranked,positives,3)
+    return {"hit_1":hit_at_k(ranked,positives,1),"hit_3":hit_at_k(ranked,positives,3),"hit_5":hit_at_k(ranked,positives,5),"recall_1":recall_at_k(ranked,positives,1),"recall_3":recall3,"recall_5":recall_at_k(ranked,positives,5),"mrr":reciprocal_rank(ranked,positives),"invalid":invalid,"abstained":float(parsed==["NONE"]),"conditional_recall_3":recall3 if not invalid else float("nan"),"random_hit_3":1-comb(n-len(positives),3)/comb(n,3),"random_recall_3":3/n}
 
 def eval_t2(item,pred):
     gt_mask=np.asarray(Image.open(item["gt_mask_path"]))>0; h,w=gt_mask.shape
     baseline={"uniform_pointing":float(gt_mask.mean()),"center_pointing":float(gt_mask[h//2,w//2])}
     p=parse_t2_response(pred.get("raw_response",""))
-    if p is None: return {"pointing_acc":0.0,"box_iou":0.0,"norm_distance":1.0,"invalid":1.0,**baseline}
+    if p is None: return {"pointing_acc":0.0,"conditional_pointing_acc":float("nan"),"box_iou":0.0,"norm_distance":1.0,"invalid":1.0,**baseline}
     point=p.get("point"); box=p.get("box")
     valid_point=isinstance(point,list) and len(point)==2 and all(type(x) in (int,float) and np.isfinite(x) and 0<=x<=1000 for x in point)
     valid_box=isinstance(box,list) and len(box)==4 and all(type(x) in (int,float) and np.isfinite(x) and 0<=x<=1000 for x in box)
@@ -33,10 +36,12 @@ def eval_t2(item,pred):
     if not valid_box: box=[0,0,0,0]
     point_px=[float(point[0])/1000*(w-1),float(point[1])/1000*(h-1)]
     gp=item["gt"]["point_norm"]; gp=[gp[0]/1000*(w-1),gp[1]/1000*(h-1)]
-    return {"pointing_acc":pointing_hit(point_px,gt_mask) if valid_point else 0.0,"box_iou":iou_xyxy([float(x) for x in box],[float(x) for x in item["gt"]["box_norm"]]),"norm_distance":normalized_distance(point_px,gp,w,h) if valid_point else 1.0,"invalid":float(not (valid_point and valid_box)),**baseline}
+    pointing=pointing_hit(point_px,gt_mask) if valid_point else 0.0
+    return {"pointing_acc":pointing,"conditional_pointing_acc":pointing if valid_point and valid_box else float("nan"),"box_iou":iou_xyxy([float(x) for x in box],[float(x) for x in item["gt"]["box_norm"]]),"norm_distance":normalized_distance(point_px,gp,w,h) if valid_point else 1.0,"invalid":float(not (valid_point and valid_box)),**baseline}
 
 def eval_t3(item,pred):
-    labels=set(_labels_from_parsed(pred,allowed="ABCDEFGHI")); labels.discard("NONE"); truth=set(item["gt"]["positive_labels"]); p,r,f1=binary_prf(labels,truth); mapping=item["gt"]["slice_labels"]; boundary=int(item["gt"]["boundary_slice"])
+    parsed=parse_label_list_response(pred.get("raw_response", ""), "ABCDEFGHI")
+    labels=set(parsed or []); labels.discard("NONE"); truth=set(item["gt"]["positive_labels"]); p,r,f1=binary_prf(labels,truth); mapping=item["gt"]["slice_labels"]; boundary=int(item["gt"]["boundary_slice"])
     _,_,all_f1=binary_prf(set(mapping),truth)
     sl=[mapping[x] for x in labels if x in mapping]; err=abs((min(sl) if item["gt"]["side"]=="entry" else max(sl))-boundary) if sl else len(mapping)
     spacing=item["gt"].get("spacing_z_mm")
@@ -44,11 +49,12 @@ def eval_t3(item,pred):
     center_label=sorted(mapping)[(len(mapping)-1)//2]
     _,_,center_f1=binary_prf({center_label},truth)
     all_boundary=abs((min(mapping.values()) if item["gt"]["side"]=="entry" else max(mapping.values()))-boundary)
-    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"all_slices_f1":all_f1,"center_e_f1":center_f1,"boundary_error_slices":float(err),"all_slices_boundary_error_slices":float(all_boundary),"center_e_boundary_error_slices":float(abs(mapping[center_label]-boundary)),"boundary_error_mm":boundary_error_mm,"invalid":float(len(labels)==0)}
+    return {"slice_precision":p,"slice_recall":r,"slice_f1":f1,"conditional_slice_f1":f1 if parsed is not None else float("nan"),"all_slices_f1":all_f1,"fixed_center_f1":center_f1,"boundary_error_slices":float(err),"all_slices_boundary_error_slices":float(all_boundary),"fixed_center_boundary_error_slices":float(abs(mapping[center_label]-boundary)),"boundary_error_mm":boundary_error_mm,"invalid":float(parsed is None),"abstained":float(parsed==["NONE"])}
 
 def eval_t4(item,pred):
     choice=parse_choice_response(pred.get("raw_response",""),item["choices"])
-    return {"pairwise_acc":float(choice==item["gt"]["answer"]),"invalid":float(choice is None),"choice":choice,"swap":item["gt"].get("swap"),"always_a_acc":float(item["gt"]["answer"]=="A")}
+    acc=float(choice==item["gt"]["answer"])
+    return {"pairwise_acc":acc,"conditional_pairwise_acc":acc if choice is not None else float("nan"),"invalid":float(choice is None),"choice":choice,"swap":item["gt"].get("swap"),"always_a_acc":float(item["gt"]["answer"]=="A")}
 
 def eval_items(manifest,preds):
     pm=_pred_map(preds); out=[]

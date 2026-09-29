@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import sys
 
@@ -33,6 +34,7 @@ def main():
     p.add_argument("--manifest", default="manifests/benchmark_msd.jsonl")
     p.add_argument("--care-manifest", default=None)
     p.add_argument("--strict", action="store_true", help="Report required output format for one answer per available track; fail only if all are invalid")
+    p.add_argument("--report", default=None, help="Write a structured development-patient format report")
     a = p.parse_args()
 
     mcfg = load_yaml(a.models_config)
@@ -59,6 +61,7 @@ def main():
     print(f"[smoke] loaded={local}")
 
     failures = []
+    checks = []
     for item in items:
         response = str(model.generate(item["image_path"], item["prompt"])).strip()
         valid = bool(response) and (not a.strict or valid_answer(item, response))
@@ -66,6 +69,11 @@ def main():
         print("[smoke] response:", response[:500])
         if not valid:
             failures.append(item["track"])
+        checks.append({"track": item["track"], "item_id": item["item_id"], "valid_format": valid})
+    if a.report:
+        report_path = Path(a.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps({"model": a.model, "checks": checks}, indent=2), encoding="utf-8")
     if len(failures) == len(items):
         raise RuntimeError(f"{a.model} produced no valid outputs on {len(items)} pilot tracks: {', '.join(failures)}")
     if failures:

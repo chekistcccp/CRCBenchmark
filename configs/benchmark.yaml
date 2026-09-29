@@ -25,6 +25,7 @@ tracks:
     canvas_size: 512
   t3:
     radius: 4
+    boundary_slots: [2, 3, 4, 5, 6]
   t4:
     fov_mm: 120
     fallback_crop_px: 160

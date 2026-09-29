@@ -29,7 +29,7 @@ MODELS_CONFIG="${MODELS_CONFIG:-configs/models.yaml}"
 BENCHMARK_CONFIG="${BENCHMARK_CONFIG:-configs/benchmark.yaml}"
 export MODELS_CONFIG BENCHMARK_CONFIG
 BOOTSTRAP="${BOOTSTRAP:-2000}"
-RUN_ROOT="${RUN_ROOT:-$ROOT_DIR/runs/protocol_v2_4}"
+RUN_ROOT="${RUN_ROOT:-$ROOT_DIR/runs/protocol_v2_5}"
 MANIFEST_DIR="$RUN_ROOT/manifests"
 PREDICTION_DIR="$RUN_ROOT/predictions"
 RESULT_DIR="$RUN_ROOT/results"
@@ -184,6 +184,10 @@ python scripts/split_cases.py --cases "$MANIFEST_DIR/cases_msd.jsonl" \
 echo "[MSD] dev and evaluation benchmarks"
 python scripts/build_benchmark.py --cases "$MANIFEST_DIR/cases_msd_dev.jsonl" --config "$BENCHMARK_CONFIG" --output "$MANIFEST_DIR/benchmark_msd_dev.jsonl" --artifact-root "$ARTIFACT_DIR/dev/msd" --experiment-name msd_dev
 python scripts/build_benchmark.py --cases "$MANIFEST_DIR/cases_msd_eval.jsonl" --config "$BENCHMARK_CONFIG" --output "$MANIFEST_DIR/benchmark_msd.jsonl" --artifact-root "$ARTIFACT_DIR/eval/msd" --experiment-name msd
+python scripts/audit_benchmark.py \
+  --cases-dev "$MANIFEST_DIR/cases_msd_dev.jsonl" --cases-eval "$MANIFEST_DIR/cases_msd_eval.jsonl" \
+  --manifest-dev "$MANIFEST_DIR/benchmark_msd_dev.jsonl" --manifest-eval "$MANIFEST_DIR/benchmark_msd.jsonl" \
+  --output "$MANIFEST_DIR/coverage_msd.json"
 
 EXPERIMENTS=("msd")
 
@@ -197,6 +201,10 @@ if [[ "$ENABLE_CARE" == "1" ]]; then
     --split-report "$MANIFEST_DIR/split_care.json"
   python scripts/build_benchmark.py --cases "$MANIFEST_DIR/cases_care_dev.jsonl" --config "$BENCHMARK_CONFIG" --output "$MANIFEST_DIR/benchmark_care_dev.jsonl" --artifact-root "$ARTIFACT_DIR/dev/care" --experiment-name care_dev
   python scripts/build_benchmark.py --cases "$MANIFEST_DIR/cases_care_eval.jsonl" --config "$BENCHMARK_CONFIG" --output "$MANIFEST_DIR/benchmark_care.jsonl" --artifact-root "$ARTIFACT_DIR/eval/care" --experiment-name care
+  python scripts/audit_benchmark.py \
+    --cases-dev "$MANIFEST_DIR/cases_care_dev.jsonl" --cases-eval "$MANIFEST_DIR/cases_care_eval.jsonl" \
+    --manifest-dev "$MANIFEST_DIR/benchmark_care_dev.jsonl" --manifest-eval "$MANIFEST_DIR/benchmark_care.jsonl" \
+    --output "$MANIFEST_DIR/coverage_care.json"
   EXPERIMENTS+=("care")
 fi
 
@@ -255,6 +263,7 @@ for model in "${MODEL_KEYS[@]}"; do
     --model-root "$MODEL_ROOT" \
     --manifest "$MANIFEST_DIR/benchmark_msd_dev.jsonl" \
     "${SMOKE_CARE_ARGS[@]}" \
+    --report "$RESULT_DIR/pilot/$model.json" \
     --strict; then
     SMOKE_FAILED+=("$model")
   fi
@@ -342,7 +351,7 @@ result_dir = Path(os.environ["RESULT_DIR"])
 manifest_dir = Path(os.environ["MANIFEST_DIR"])
 meta = {
     "timestamp": datetime.datetime.now().astimezone().isoformat(),
-    "protocol": "v2.4",
+    "protocol": "v2.5",
     "git_commit": git_commit(),
     "host": platform.node(),
     "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
@@ -353,6 +362,8 @@ meta = {
     "configuration_sha256": {name: sha256(os.environ[name]) for name in ("MODELS_CONFIG", "BENCHMARK_CONFIG")},
     "manifest_sha256": {p.name: sha256(p) for p in sorted(manifest_dir.glob("benchmark_*.jsonl"))},
     "patient_splits": {p.name: json.loads(p.read_text(encoding="utf-8")) for p in sorted(manifest_dir.glob("split_*.json"))},
+    "manifest_coverage": {p.name: json.loads(p.read_text(encoding="utf-8")) for p in sorted(manifest_dir.glob("coverage_*.json"))},
+    "pilot_format_reports": {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted((result_dir / "pilot").glob("*.json"))},
 }
 result_dir.mkdir(parents=True, exist_ok=True)
 (result_dir / "run_metadata.json").write_text(

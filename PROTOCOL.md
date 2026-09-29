@@ -1,4 +1,4 @@
-# ColoGround-Bench Protocol v2.4
+# ColoGround-Bench Protocol v2.5
 
 ColoGround-Bench is a training-free benchmark for open vision-language models on colorectal CT. It uses only real expert segmentation annotations from MSD Task10 Colon and CARE; no T stage, pathology, MSI, prognosis, necrosis, or synthetic clinical labels are created.
 
@@ -9,6 +9,16 @@ ColoGround-Bench is a training-free benchmark for open vision-language models on
 3. **T3 Volumetric Consistency** — identify tumor-positive slices around entry/exit boundaries. Primary metric: patient-level Slice F1.
 4. **T4 CARE Hard Negative** — same-patient tumor ROI versus normal rectal wall ROI. Report pairwise accuracy, valid-pair coverage, both-correct rate, swap consistency, and side preference.
 5. **T5 Exploratory Counterfactual Response** — compare original images, lesion-specific suppression, matched-control suppression and dose-response perturbations. The original PRESENT recognition rate is the coverage gate. Continuous Faithfulness Gap remains unavailable until candidate likelihoods are validated; decision-only scores are reported separately for recognized originals.
+
+### v2.5 T3 construction and score interpretation
+
+For each eligible tumor entry and exit, the benchmark builds nine truly consecutive source slices. The true boundary is placed at one of positions C–G using a fixed SHA-256-derived permutation per patient and side; the first feasible position is selected. This selection uses only patient identity, source-slice availability, and the frozen seed. It never uses model predictions. The prompt does not disclose the boundary side or position. The evaluation manifest records the chosen `boundary_slot`, and a pre-inference audit rejects a formal cohort with only one boundary position.
+
+Patient-level Slice F1 remains the primary T3 metric. Selecting all nine slices and selecting the fixed center slice are separate baselines. Boundary error is descriptive: a fixed-center strategy can do well on boundary location without identifying the complete tumor-positive interval. The old v2.4 T3 placed every boundary at E and is retained as a historical pilot result; v2.5 T3 scores are not directly comparable to it.
+
+The v2.4 evaluation results were inspected before this structural correction. v2.5 reuses the same patient cohort, so it is a revised benchmark on reused data, not an independent prospective confirmation. Model outputs did not determine boundary slots, task thresholds, or output-parser changes. Future external validation requires a new patient cohort.
+
+For T1–T4, the primary score counts malformed answers as failures and reports their rate. A secondary `conditional_*` score uses only valid-format answers, with its own patient count. A valid `["NONE"]` on a tumor-positive T1/T3 question is a wrong abstention, not a malformed answer. The conditional score must be read alongside coverage and must not replace the primary score. Output parsing remains frozen and does not infer answers from free-form clinical explanations after viewing evaluation responses.
 
 ## Dataset-specific roles
 
@@ -93,7 +103,7 @@ Before extraction, a downloaded archive can be inspected using:
 python scripts/inspect_care.py data/raw/CARE/CARE.zip --output manifests/care_audit_v3.json
 ```
 
-The audit reads archive members, bbox CSV files and a deterministic sample of NPZ files without extracting the full archive. Its historical `label_semantics_verified=false` flag means the archive itself did not resolve the codebook; protocol v2.4 uses the mapping supplied by the user.
+The audit reads archive members, bbox CSV files and a deterministic sample of NPZ files without extracting the full archive. Its historical `label_semantics_verified=false` flag means the archive itself did not resolve the codebook; protocol v2.5 uses the mapping supplied by the user.
 
 ## Non-negotiable evaluation rules
 
@@ -107,6 +117,7 @@ The audit reads archive members, bbox CSV files and a deterministic sample of NP
 - Development and formal-evaluation patients are disjoint. The output-format pilot uses development patients only.
 - MSD `colon_001` and CARE `case17105001`, previously used for v2.3 adapter pilots, are forced into development cohorts and excluded from formal evaluation.
 - Invalid responses are retained as failures and separately counted.
+- Primary scores include invalid responses; conditional valid-format scores are secondary and always include their denominator.
 - T1/T2/T3 include pre-specified random, spatial, and trivial-selection baselines respectively.
 - No aggregate weighted leaderboard score is created.
 - CARE uses the user-confirmed label mapping and records its provenance.
@@ -139,7 +150,7 @@ The canonical experiment entry point is:
 bash run.sh
 ```
 
-Protocol v2.4 writes new manifests, artifacts, predictions, and results under `runs/protocol_v2_4/` by default, preserving v2.3. A stable SHA-256 patient split assigns 20 MSD and 20 CARE cases to development and the remainder to formal evaluation. Prediction resume and formal evaluation require matching manifest SHA-256 fingerprints. A GPU output-format pilot can be run with `PILOT_ONLY=1 bash run.sh`; it uses development patients only and exits before full inference.
+Protocol v2.5 writes new manifests, artifacts, predictions, and results under `runs/protocol_v2_5/` by default, preserving v2.3 and v2.4. A stable SHA-256 patient split assigns 20 MSD and 20 CARE cases to development and the remainder to formal evaluation. Prediction resume and formal evaluation require matching manifest SHA-256 fingerprints. Before model inference, the runner saves `coverage_msd.json` and `coverage_care.json` with track-level patient counts and T3 boundary positions. A GPU output-format pilot can be run with `PILOT_ONLY=1 bash run.sh`; it uses development patients only and exits before full inference.
 
 The repository is intentionally scheduler-agnostic. `run.sh` never calls `sbatch`, `srun`, `salloc`, or any other Slurm command. GPU/node allocation and job submission are performed manually by the user or institutional scheduler configuration.
 
@@ -152,7 +163,7 @@ Inference outputs are checkpointed incrementally at item level. Re-running `run.
 
 ## CARE label protocol
 
-The 81-patient CARE test cohort is split at patient level into 20 development and 61 formal-evaluation patients. Only one mapping is run: `0=background`, `1=normal`, `raw labels >1=tumor`, canonically stored as 2. The former inverted-label branch remains in the archived v2.3 outputs and is not part of v2.4. This mapping was provided by the user; a publication should state that provenance rather than claim that the released documentation independently proves it.
+The 81-patient CARE test cohort is split at patient level into 20 development and 61 formal-evaluation patients. Only one mapping is run: `0=background`, `1=normal`, `raw labels >1=tumor`, canonically stored as 2. The former inverted-label branch remains in the archived v2.3 outputs and is not part of v2.5. This mapping was provided by the user; a publication should state that provenance rather than claim that the released documentation independently proves it.
 
 
 ## Automatic data preparation

@@ -83,7 +83,7 @@ def _optional_spacing(row, key):
 
 def load_care_npz_series(rows, case_id, split=None, tumor_label_id=2, normal_label_id=1):
     if tumor_label_id != 2 or normal_label_id != 1:
-        raise ValueError("CARE v2.4 requires normal label 1 and all other foreground labels as tumor.")
+        raise ValueError("CARE v2.5 requires normal label 1 and all other foreground labels as tumor.")
     rows = sorted(rows, key=lambda x: int(x["slice_index"]))
     images, labels, indices = [], [], []
     for r in rows:

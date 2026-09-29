@@ -54,31 +54,42 @@ def build_t2(case,out_root,cfg):
         rows.append({"item_id":f"t2:{case.dataset}:{case.case_id}:{z}","track":"t2","dataset":case.dataset,"case_id":case.case_id,"slice_index":z,"image_path":str(p),"gt_mask_path":str(mp),"prompt":"Identify the single image location that provides the strongest visual evidence for the primary colorectal tumor. Return only JSON: {\"point\":[x,y],\"box\":[x1,y1,x2,y2]}, where all coordinates are normalized integers from 0 to 1000.","gt":{"point_norm":normalize_point(centroid,w,h),"box_norm":normalize_box(bbox,w,h),"shape_hw":[h,w]}})
     return rows
 
-def _local_source_window(case, center_pos, radius):
-    """Return array positions for a truly consecutive source-slice window."""
+def _local_source_window(case, boundary_pos, boundary_slot, window_length):
+    """Return a consecutive window with the boundary at the requested slot."""
     n = case.image.shape[0]
     src = getattr(case, "source_slice_indices", getattr(case, "slice_indices", None))
     if src is None:
-        positions = list(range(center_pos-radius, center_pos+radius+1))
+        positions = list(range(boundary_pos-boundary_slot, boundary_pos-boundary_slot+window_length))
         if min(positions) < 0 or max(positions) >= n:
             return None, None
         return positions, positions
 
     src = [int(x) for x in src]
-    center_src = src[int(center_pos)]
+    center_src = src[int(boundary_pos)]
     lookup = {z:i for i,z in enumerate(src)}
-    wanted = list(range(center_src-radius, center_src+radius+1))
+    wanted = list(range(center_src-boundary_slot, center_src-boundary_slot+window_length))
     if not all(z in lookup for z in wanted):
         return None, wanted
     return [lookup[z] for z in wanted], wanted
 
 
-def build_t3(case,out_root,cfg):
+def build_t3(case,out_root,cfg,seed=0):
     tumor=case.tumor_mask(); areas=tumor.reshape(tumor.shape[0],-1).sum(1); pos=np.where(areas>0)[0]
     if len(pos)==0:return []
     radius=int(cfg["radius"]); n=2*radius+1; rows=[]
-    for side,center_pos in (("entry",int(pos.min())),("exit",int(pos.max()))):
-        arr_positions,source_slices=_local_source_window(case,center_pos,radius)
+    slots=[int(x) for x in cfg.get("boundary_slots", range(2, n-2))]
+    if not slots or len(set(slots))!=len(slots) or any(x<1 or x>=n-1 for x in slots):
+        raise ValueError("T3 boundary_slots must be distinct interior positions")
+    for side,boundary_pos in (("entry",int(pos.min())),("exit",int(pos.max()))):
+        key=f"{seed}\0{case.dataset}\0{case.case_id}\0{side}\0t3".encode("utf-8")
+        slot_rng=np.random.default_rng(int.from_bytes(hashlib.sha256(key).digest()[:8],"big"))
+        arr_positions=source_slices=None
+        boundary_slot=None
+        for candidate in slot_rng.permutation(slots):
+            arr_positions,source_slices=_local_source_window(case,boundary_pos,int(candidate),n)
+            if arr_positions is not None:
+                boundary_slot=int(candidate)
+                break
         if arr_positions is None:
             continue
         ims=[to_rgb_pil(case.image[z],intensity_mode=case.intensity_mode,size=256) for z in arr_positions]
@@ -87,16 +98,17 @@ def build_t3(case,out_root,cfg):
         gt_labels=[lab for lab,z in zip(labs,arr_positions) if areas[z]>0]
         spacing_z=float(case.spacing_zyx[0])
         spacing_z=None if not np.isfinite(spacing_z) or spacing_z<=0 else spacing_z
-        boundary_source=int(source_slices[radius])
+        boundary_source=int(source_slices[boundary_slot])
         rows.append({
             "item_id":f"t3:{case.dataset}:{case.case_id}:{side}",
             "track":"t3","dataset":case.dataset,"case_id":case.case_id,
             "image_path":str(p),
-            "prompt":"The nine images labeled A-I are truly consecutive axial CT slices. Identify all slices containing visible primary colorectal tumor. Return only a JSON list of labels, for example [\"E\",\"F\"].",
+            "prompt":"The nine images labeled A-I are truly consecutive axial CT slices. Identify all slices containing visible primary colorectal tumor. Return only a JSON list of labels from A-I.",
             "gt":{
                 "positive_labels":gt_labels,
                 "slice_labels":{lab:int(z) for lab,z in zip(labs,source_slices)},
                 "boundary_slice":boundary_source,
+                "boundary_slot":boundary_slot,
                 "spacing_z_mm":spacing_z,
                 "side":side
             }
@@ -182,5 +194,5 @@ def build_all_tracks(case,out_root,cfg,seed):
     key=f"{seed}\0{case.dataset}\0{case.case_id}".encode("utf-8")
     stable_seed=int.from_bytes(hashlib.sha256(key).digest()[:8],"big")
     out_root=Path(out_root); rng=np.random.default_rng(stable_seed); rows=[]
-    rows+=build_t1(case,out_root,cfg["t1"],rng); rows+=build_t2(case,out_root,cfg["t2"]); rows+=build_t3(case,out_root,cfg["t3"]); rows+=build_t4(case,out_root,cfg["t4"],rng); rows+=build_t5(case,out_root,cfg["t5"],rng)
+    rows+=build_t1(case,out_root,cfg["t1"],rng); rows+=build_t2(case,out_root,cfg["t2"]); rows+=build_t3(case,out_root,cfg["t3"],seed); rows+=build_t4(case,out_root,cfg["t4"],rng); rows+=build_t5(case,out_root,cfg["t5"],rng)
     return rows
