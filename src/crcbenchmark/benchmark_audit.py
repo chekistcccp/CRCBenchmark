@@ -22,6 +22,8 @@ def audit_benchmark_cohorts(dev_cases: list[dict], eval_cases: list[dict],
 
         tracks = sorted({row["track"] for row in items})
         t3_slots = Counter()
+        t3_side_slots = {}
+        t3_positive_counts = Counter()
         for row in items:
             if row["track"] != "t3":
                 continue
@@ -36,6 +38,9 @@ def audit_benchmark_cohorts(dev_cases: list[dict], eval_cases: list[dict],
             if source[slot] != gt["boundary_slice"] or sorted(labels)[slot] not in gt["positive_labels"]:
                 raise ValueError("T3 boundary does not match its image labels")
             t3_slots[slot] += 1
+            side = gt.get("side", "unspecified")
+            t3_side_slots.setdefault(side, Counter())[slot] += 1
+            t3_positive_counts[len(gt["positive_labels"])] += 1
         if split == "eval" and len(t3_slots) < 2:
             raise ValueError("Formal T3 cohort has a fixed boundary position")
         report[split] = {
@@ -47,6 +52,9 @@ def audit_benchmark_cohorts(dev_cases: list[dict], eval_cases: list[dict],
                 for track in tracks
             },
             "t3_boundary_slots": dict(sorted(t3_slots.items())),
+            "t3_boundary_slots_by_side": {side: dict(sorted(counts.items()))
+                                           for side, counts in sorted(t3_side_slots.items())},
+            "t3_positive_slice_counts": dict(sorted(t3_positive_counts.items())),
         }
     if case_sets["dev"] & case_sets["eval"]:
         raise ValueError("Development and evaluation patients overlap")

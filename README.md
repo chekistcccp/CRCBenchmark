@@ -42,6 +42,18 @@ runs/protocol_v2_5/
 
 开发集预检会在 `results/pilot/` 留下逐轨道格式报告。预检通过只表示适配器可生成至少一个合格格式的回答；正式结果仍分别统计无效率和视觉指标。所有模型采用贪心生成、同一冻结评价题目；不从普通解释文字猜测答案。
 
+## 补充诊断
+
+现有 v2.5 结果可直接做补充诊断，无需重跑主实验：
+
+```bash
+bash run_supplement.sh
+# 已分配 GPU 时，可额外运行所有模型的开发集提示格式对照：
+FORMAT_ABLATION=1 bash run_supplement.sh
+```
+
+补充诊断报告 T3 平衡准确率、完整阳性集合匹配率、仅用开发集拟合的位置基线及患者配对差值区间。提示对照在相同开发图像上比较当前提示与两个不同标签的格式示例，全部报告，不自动选择提示。输出位于 `runs/protocol_v2_5/supplement/`；v2.5 主协议保持冻结，新增诊断注明为事后分析。
+
 ## 环境
 
 使用 Python 3.11、PyTorch 2.13.0、torchvision 0.28.0、CUDA 12.6。先从 PyTorch cu126 wheel 安装 torch/torchvision，再运行 `pip install -r requirements.txt`；`requirements.txt` 故意不包含 torch。`run.sh` 的 preflight 会验证 GPU 与运行时，不会自行更换 PyTorch。

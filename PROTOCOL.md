@@ -22,6 +22,19 @@ For T1–T4, the primary score counts malformed answers as failures and reports 
 
 ## Dataset-specific roles
 
+### Frozen v2.5 and supplementary diagnostic design (2026-09-30)
+
+v2.5 primary manifests, prompts, parsing, and scores remain frozen. These additions are post-hoc diagnostics motivated by the observed v2.5 results; they are not new primary endpoints or independent validation. Low scores and format failures remain reportable benchmark findings.
+
+- T3 additionally reports per-window balanced accuracy (mean sensitivity and specificity) and exact positive-set match, aggregated first within patient. Both classes must occur in a window. All-positive and all-negative constant decisions have balanced accuracy 0.5; malformed responses score zero and retain their invalid flag. This diagnostic penalizes selecting every slice despite high positive prevalence.
+- Three nonvisual baselines are reported: all slices, fixed E, and a development-only position prior. For the prior, positive-label prevalence is averaged within each development patient and then across patients; labels with prevalence at least 0.5 are always selected for every evaluation image in that dataset. No evaluation labels or model outputs fit the prior, and the prior cannot access entry/exit side. It remains a post-hoc added baseline.
+- Differences from each baseline use paired patient bootstrap (2,000 resamples, seed 42, percentile 95% intervals). They are exploratory intervals without multiplicity correction; no significance-based model selection or overall leaderboard is performed.
+- Coverage audits report boundary position jointly with entry/exit side and report positive-slice counts. Marginal position balance alone does not imply balanced class prevalence or removal of every position prior.
+- A separate GPU format experiment uses every available T3 development image from each dataset. All models receive three paired variants: the frozen current prompt, that prompt plus a format-only `["A","C"]` example, and that prompt plus a format-only `["G","I"]` example. Images, labels, decoding configuration, and token budget are identical across variants. Both example positions are reported to expose example-induced position effects. Every variant is reported; the script never selects a winning prompt or applies it to evaluation patients.
+- The format experiment rejects any input row not marked `benchmark_split=dev`, records raw answers, fingerprints, model configuration, and paired patient differences in format validity and F1. Formal evaluation rejects these development manifests. GPU execution is optional and separate from the offline supplement.
+
+Run `bash run_supplement.sh` to analyze existing full v2.5 results without model inference. Inside an allocated GPU environment, `FORMAT_ABLATION=1 bash run_supplement.sh` additionally runs the development experiment for all configured models and both datasets. All outputs go under `runs/protocol_v2_5/supplement/`. This workflow does not rebuild primary images or overwrite primary results. The input must include both dataset manifests and existing predictions.
+
 ### MSD Task10 Colon
 
 MSD is treated as a true 3D CT dataset with NIfTI image/mask pairs. It can support T1, T2, T3 and T5 directly after standard QC. Foreground tumor label `1` is defined by the task segmentation mask.

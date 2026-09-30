@@ -34,4 +34,6 @@ Development-patient pilot checks are saved under `results/pilot/` by model. A pi
 
 Use Python 3.11, PyTorch 2.13.0, torchvision 0.28.0, and CUDA 12.6. Install the PyTorch cu126 wheels before `pip install -r requirements.txt`.
 
+With existing full v2.5 results, run `bash run_supplement.sh` for offline T3 balanced accuracy, exact-set match, development-fitted position priors, and paired patient differences. On an allocated GPU, `FORMAT_ABLATION=1 bash run_supplement.sh` also runs all three prompt variants on identical development images for every model and both datasets. All variants are reported; no winner is selected. Outputs stay under `runs/protocol_v2_5/supplement/`. These are post-hoc supplementary diagnostics; the v2.5 primary protocol remains frozen.
+
 Report patient-level intervals, invalid-response rates, task baselines, and task coverage alongside model scores. Low scores are valid benchmark findings; however, output-format failures must not be misrepresented as visual incompetence. T5 continuous Faithfulness Gap remains unavailable without validated likelihood scores.
