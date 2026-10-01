@@ -27,3 +27,8 @@ PY
     done
   done
 fi
+
+# Offline control requires completed format outputs for the entire configured roster.
+if [[ "${ASSOCIATION_ANALYSIS:-0}" == "1" ]]; then
+  python scripts/analyze_t3_association.py --run-root "$RUN_ROOT" --models-config "$MODELS_CONFIG"
+fi

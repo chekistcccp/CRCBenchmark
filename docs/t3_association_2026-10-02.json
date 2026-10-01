@@ -1,0 +1,1776 @@
+{
+  "analysis": "posthoc_dev_patient_block_association_v1",
+  "primary_results_modified": false,
+  "inference": "BA one-sided Monte Carlo permutation; Holm across all model/dataset/variant tests",
+  "family_size": 36,
+  "null_interval": "2.5/97.5 percentiles of permutation null, NOT a confidence interval",
+  "exchangeability": "patient response blocks within entry/exit availability strata; identical prompts",
+  "limitations": "Observed answer-label association, not causal image reliance; no significance does not prove images ignored. Development cohort reused; exploratory only.",
+  "entries": [
+    {
+      "model": "qwen35_9b",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "840a57b1a41ec61c81a24f11c76e67dbdc5b23e10c427c9270c663099d3263b6",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "INVALID": 40
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen35_9b",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "840a57b1a41ec61c81a24f11c76e67dbdc5b23e10c427c9270c663099d3263b6",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D,E,F": 1,
+        "INVALID": 38
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.024967130641635592,
+          "matched_minus_permutation": 3.2869358364408935e-05,
+          "null_q025": 0.015625,
+          "null_q975": 0.0325,
+          "p_greater": 0.6212,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.029166666666666664,
+          "permutation_mean": 0.027178634155456835,
+          "matched_minus_permutation": 0.0019880325112098286,
+          "null_q025": 0.013333333333333332,
+          "null_q975": 0.03809523809523809
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0012326232623262327,
+          "matched_minus_permutation": -0.0012326232623262327,
+          "null_q025": 0.0,
+          "null_q975": 0.025
+        }
+      }
+    },
+    {
+      "model": "qwen35_9b",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "840a57b1a41ec61c81a24f11c76e67dbdc5b23e10c427c9270c663099d3263b6",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D,E,F": 1,
+        "C,D,E,F,G,H,I": 1,
+        "C,F,I": 1,
+        "D,E,F": 1,
+        "D,E,F,G,H,I": 1,
+        "INVALID": 34
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.07785714285714286,
+          "permutation_mean": 0.0787861792131594,
+          "matched_minus_permutation": -0.0009290363560165438,
+          "null_q025": 0.06821428571428571,
+          "null_q975": 0.09098214285714286,
+          "p_greater": 0.538,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.07950757575757576,
+          "permutation_mean": 0.08043064209018304,
+          "matched_minus_permutation": -0.0009230663326072752,
+          "null_q025": 0.06498376623376625,
+          "null_q975": 0.09669413919413919
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.005095509550955096,
+          "matched_minus_permutation": -0.005095509550955096,
+          "null_q025": 0.0,
+          "null_q975": 0.025
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "22d2fb08bd6958999d14c378a8602ff2c9a883be9565238465fe9fd16e60fe02",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 1,
+        "A,B,C,D,E,F,G,H,I": 22,
+        "C,D,E,F,G,H,I": 3,
+        "D,E,F,G,H,I": 10
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.47238095238095246,
+          "permutation_mean": 0.48658976016649286,
+          "matched_minus_permutation": -0.0142088077855404,
+          "null_q025": 0.4712202380952381,
+          "null_q975": 0.5033630952380952,
+          "p_greater": 0.964,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6195737595737596,
+          "permutation_mean": 0.6344022838292265,
+          "matched_minus_permutation": -0.01482852425546688,
+          "null_q025": 0.6194142420079919,
+          "null_q975": 0.6491327596015096
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.029682968296829683,
+          "matched_minus_permutation": -0.0046829682968296815,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "22d2fb08bd6958999d14c378a8602ff2c9a883be9565238465fe9fd16e60fe02",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 2,
+        "A,B,C,D,E,F,G,H,I": 30,
+        "C,D,E,F,G,H,I": 2,
+        "D,E,F,G,H,I": 2,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5033333333333333,
+          "permutation_mean": 0.5012027601569681,
+          "matched_minus_permutation": 0.0021305731763652247,
+          "null_q025": 0.48955357142857137,
+          "null_q975": 0.5156249999999999,
+          "p_greater": 0.3582,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6708793290043289,
+          "permutation_mean": 0.668835409188882,
+          "matched_minus_permutation": 0.0020439198154469373,
+          "null_q025": 0.657004922161172,
+          "null_q975": 0.6806795877733376
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.01893939393939394,
+          "matched_minus_permutation": 0.0060606060606060615,
+          "null_q025": 0.0,
+          "null_q975": 0.05
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "22d2fb08bd6958999d14c378a8602ff2c9a883be9565238465fe9fd16e60fe02",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 2,
+        "A,B,C,D,E,F,G,H,I": 26,
+        "C,D,E,F,G,H,I": 2,
+        "D,E,F,G,H": 1,
+        "D,E,F,G,H,I": 4,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.4877976190476191,
+          "permutation_mean": 0.489854655108368,
+          "matched_minus_permutation": -0.002057036060748918,
+          "null_q025": 0.47580357142857144,
+          "null_q975": 0.5056845238095239,
+          "p_greater": 0.5951,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6338394938394938,
+          "permutation_mean": 0.6403424464782475,
+          "matched_minus_permutation": -0.006502952638753667,
+          "null_q025": 0.6265842733655232,
+          "null_q975": 0.6540539495226994
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.022634763476347637,
+          "matched_minus_permutation": 0.0023652365236523643,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "05cef763bf20a2d446d2a5408f846be32c4f2478de425d565982a89ebcdcea9b",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 15,
+        "A,B,C,D,E,F": 8,
+        "B": 1,
+        "B,C,E,F": 3,
+        "D,E,F": 4,
+        "D,E,F,G,H,I": 5,
+        "E,F": 2,
+        "F,I": 1,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5615773809523811,
+          "permutation_mean": 0.5716234361531392,
+          "matched_minus_permutation": -0.010046055200758075,
+          "null_q025": 0.540202380952381,
+          "null_q975": 0.6020580357142857,
+          "p_greater": 0.7354,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.4998558386058386,
+          "permutation_mean": 0.5093650828619325,
+          "matched_minus_permutation": -0.009509244256093896,
+          "null_q025": 0.4766053113553113,
+          "null_q975": 0.5425921717171717
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.06608660866086608,
+          "matched_minus_permutation": -0.041086608660866074,
+          "null_q025": 0.0,
+          "null_q975": 0.125
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "05cef763bf20a2d446d2a5408f846be32c4f2478de425d565982a89ebcdcea9b",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 4,
+        "A,B,C,D": 1,
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 23,
+        "A,B,C,D,E,F,G,H,I": 3,
+        "B,C,D,E,F": 1,
+        "D,E,F": 2,
+        "D,E,F,G,H,I": 3,
+        "E,F": 1,
+        "F": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5793154761904763,
+          "permutation_mean": 0.5850528981469576,
+          "matched_minus_permutation": -0.005737421956481303,
+          "null_q025": 0.5658318452380953,
+          "null_q975": 0.6035431547619048,
+          "p_greater": 0.7216,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.596847804972805,
+          "permutation_mean": 0.5973259731414923,
+          "matched_minus_permutation": -0.0004781681686872874,
+          "null_q025": 0.5809749243811744,
+          "null_q975": 0.6130116272616273
+        },
+        "exact_set": {
+          "matched_mean": 0.175,
+          "permutation_mean": 0.12734773477347736,
+          "matched_minus_permutation": 0.04765226522652263,
+          "null_q025": 0.075,
+          "null_q975": 0.175
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "05cef763bf20a2d446d2a5408f846be32c4f2478de425d565982a89ebcdcea9b",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 7,
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 19,
+        "A,B,C,D,E,F,G,H,I": 3,
+        "B,C,D,E,F": 1,
+        "D,E,F": 3,
+        "D,E,F,G,H,I": 2,
+        "E,F": 1,
+        "E,F,G,H,I": 1,
+        "F,I": 1,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5384226190476191,
+          "permutation_mean": 0.5522501357278585,
+          "matched_minus_permutation": -0.013827516680239405,
+          "null_q025": 0.5263973214285714,
+          "null_q975": 0.5777380952380952,
+          "p_greater": 0.8494,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.5461968586968587,
+          "permutation_mean": 0.5618378832971542,
+          "matched_minus_permutation": -0.015641024600295483,
+          "null_q025": 0.535941992035742,
+          "null_q975": 0.5880098408535909
+        },
+        "exact_set": {
+          "matched_mean": 0.125,
+          "permutation_mean": 0.09238673867386739,
+          "matched_minus_permutation": 0.03261326132613261,
+          "null_q025": 0.025,
+          "null_q975": 0.15
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "21fde7243587672f113558a4507e9b40ab695282452d23dfd2ebf43053ba9cef",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 2,
+        "A,B,C,D": 1,
+        "A,B,C,D,E,F": 3,
+        "A,B,C,D,E,F,G,H,I": 6,
+        "D,E,F,G,H,I": 2,
+        "G,H,I": 2,
+        "INVALID": 24
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.2375,
+          "permutation_mean": 0.23377747893837003,
+          "matched_minus_permutation": 0.0037225210616299576,
+          "null_q025": 0.22017559523809524,
+          "null_q975": 0.24708333333333338,
+          "p_greater": 0.2977,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.2682375957375957,
+          "permutation_mean": 0.2604271411295863,
+          "matched_minus_permutation": 0.007810454608009387,
+          "null_q025": 0.23882718323343324,
+          "null_q975": 0.28151407967032965
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.027585258525852585,
+          "matched_minus_permutation": -0.027585258525852585,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "21fde7243587672f113558a4507e9b40ab695282452d23dfd2ebf43053ba9cef",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G,H,I": 36,
+        "D,E,F,G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5095833333333333,
+          "permutation_mean": 0.5131439721353088,
+          "matched_minus_permutation": -0.0035606388019755464,
+          "null_q025": 0.5072916666666667,
+          "null_q975": 0.5208333333333334,
+          "p_greater": 0.8374,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6866796398046396,
+          "permutation_mean": 0.6881195871210496,
+          "matched_minus_permutation": -0.0014399473164099508,
+          "null_q025": 0.6802747252747251,
+          "null_q975": 0.6984667415917414
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.011233623362336234,
+          "matched_minus_permutation": -0.011233623362336234,
+          "null_q025": 0.0,
+          "null_q975": 0.05
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "21fde7243587672f113558a4507e9b40ab695282452d23dfd2ebf43053ba9cef",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A": 1,
+        "A,B,C,D,E,F": 3,
+        "A,B,C,D,E,F,G,H,I": 34,
+        "B,C,D,E,F,G,H,I": 1,
+        "D,E,F,G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5139583333333333,
+          "permutation_mean": 0.5202094852342377,
+          "matched_minus_permutation": -0.006251151900904417,
+          "null_q025": 0.5122872023809524,
+          "null_q975": 0.5295238095238095,
+          "p_greater": 0.9286,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.688410409035409,
+          "permutation_mean": 0.6901672844190845,
+          "matched_minus_permutation": -0.0017568753836755269,
+          "null_q025": 0.681572802197802,
+          "null_q975": 0.7004652430902429
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.018626862686268626,
+          "matched_minus_permutation": -0.018626862686268626,
+          "null_q025": 0.0,
+          "null_q975": 0.05
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "fb904fbe4d2a6d42e12da85628f5d8216b65df42460d4ec4c2d14cc74c1135a3",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F,G,H,I": 40
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5,
+          "permutation_mean": 0.5,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.5,
+          "null_q975": 0.5,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6976991758241755,
+          "permutation_mean": 0.6976991758241754,
+          "matched_minus_permutation": 1.1102230246251565e-16,
+          "null_q025": 0.6976991758241755,
+          "null_q975": 0.6976991758241755
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "fb904fbe4d2a6d42e12da85628f5d8216b65df42460d4ec4c2d14cc74c1135a3",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,C": 22,
+        "A,C,E,F,H,I": 2,
+        "A,C,E,G,I": 15,
+        "INVALID": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.47297619047619044,
+          "permutation_mean": 0.46618039482519685,
+          "matched_minus_permutation": 0.006795795650993586,
+          "null_q025": 0.4552083333333333,
+          "null_q975": 0.4771443452380953,
+          "p_greater": 0.1168,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.397144660894661,
+          "permutation_mean": 0.3833662576491859,
+          "matched_minus_permutation": 0.01377840324547508,
+          "null_q025": 0.3655854978354978,
+          "null_q975": 0.40105916305916306
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "fb904fbe4d2a6d42e12da85628f5d8216b65df42460d4ec4c2d14cc74c1135a3",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "G,I": 40
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.47470238095238093,
+          "permutation_mean": 0.4747023809523811,
+          "matched_minus_permutation": -1.6653345369377348e-16,
+          "null_q025": 0.47470238095238093,
+          "null_q975": 0.47470238095238093,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.29343253968253963,
+          "permutation_mean": 0.29343253968253963,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.29343253968253963,
+          "null_q975": 0.29343253968253963
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "msd",
+      "variant": "current",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "ac2381c257833efa5ef11e3c4b24c36a469713657ca09974107fffd7c9a583f9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 1,
+        "A,B,C,D,E,F,G,H": 1,
+        "A,B,C,D,E,F,G,H,I": 8,
+        "B,C,D,E": 1,
+        "B,C,D,E,F": 2,
+        "C,D,E,F,G,H,I": 1,
+        "D,E": 1,
+        "D,E,F": 5,
+        "D,E,F,G,H": 3,
+        "D,E,F,G,H,I": 12,
+        "INVALID": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.49473214285714284,
+          "permutation_mean": 0.479701118921416,
+          "matched_minus_permutation": 0.015031023935726862,
+          "null_q025": 0.4586607142857143,
+          "null_q975": 0.5010714285714286,
+          "p_greater": 0.0854,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.5599601787101787,
+          "permutation_mean": 0.5441049576430614,
+          "matched_minus_permutation": 0.01585522106711723,
+          "null_q025": 0.5215352737540238,
+          "null_q975": 0.5672448454323454
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.03131063106310632,
+          "matched_minus_permutation": 0.018689368936893686,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "msd",
+      "variant": "example_ac",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "ac2381c257833efa5ef11e3c4b24c36a469713657ca09974107fffd7c9a583f9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 1,
+        "A,B,C,D,E,F,G,H": 1,
+        "A,B,C,D,E,F,G,H,I": 12,
+        "B,C,D,E,F,G": 1,
+        "B,C,D,E,F,G,H": 2,
+        "D,E": 1,
+        "D,E,F": 5,
+        "D,E,F,G,H": 3,
+        "D,E,F,G,H,I": 9,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5310416666666666,
+          "permutation_mean": 0.5200981616018744,
+          "matched_minus_permutation": 0.010943505064792247,
+          "null_q025": 0.4977678571428572,
+          "null_q975": 0.542233630952381,
+          "p_greater": 0.1714,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6044669913419914,
+          "permutation_mean": 0.5941270800059805,
+          "matched_minus_permutation": 0.010339911336010976,
+          "null_q025": 0.5723294864857364,
+          "null_q975": 0.6168876852314352
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.02763276327632764,
+          "matched_minus_permutation": 0.022367236723672364,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "msd",
+      "variant": "example_gi",
+      "manifest_sha256": "33202398458aced0620c3f8ef4cbcbf0e32ca1a26a1ed7e19cd391dcee3bb5f4",
+      "predictions_sha256": "ac2381c257833efa5ef11e3c4b24c36a469713657ca09974107fffd7c9a583f9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry+exit": 20
+      },
+      "n_items": 40,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D": 1,
+        "A,B,C,D,E,F": 2,
+        "A,B,C,D,E,F,G": 1,
+        "A,B,C,D,E,F,G,H": 1,
+        "A,B,C,D,E,F,G,H,I": 17,
+        "B,C,D,E,F,G": 1,
+        "D,E": 1,
+        "D,E,F": 4,
+        "D,E,F,G,H": 1,
+        "D,E,F,G,H,I": 9,
+        "INVALID": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5198511904761905,
+          "permutation_mean": 0.5161733971016149,
+          "matched_minus_permutation": 0.003677793374575633,
+          "null_q025": 0.49574255952380947,
+          "null_q975": 0.5373229166666665,
+          "p_greater": 0.366,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.621891441891442,
+          "permutation_mean": 0.6115993971330754,
+          "matched_minus_permutation": 0.010292044758366536,
+          "null_q025": 0.5901061334498835,
+          "null_q975": 0.6339302156177156
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.031013101310131016,
+          "matched_minus_permutation": 0.018986898689868987,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "qwen35_9b",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "433c344a0ce9030f948e717c0222521a6f9e172249d2feae31ec7c0ccb62aca1",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "INVALID": 36
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen35_9b",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "433c344a0ce9030f948e717c0222521a6f9e172249d2feae31ec7c0ccb62aca1",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "INVALID": 36
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen35_9b",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "433c344a0ce9030f948e717c0222521a6f9e172249d2feae31ec7c0ccb62aca1",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "E,F": 1,
+        "G,I": 1,
+        "INVALID": 34
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.05089285714285714,
+          "permutation_mean": 0.05023728563332524,
+          "matched_minus_permutation": 0.0006555715095319034,
+          "null_q025": 0.04821428571428571,
+          "null_q975": 0.05416666666666666,
+          "p_greater": 0.3891,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.03888888888888889,
+          "permutation_mean": 0.03772637581218439,
+          "matched_minus_permutation": 0.0011625130767045008,
+          "null_q025": 0.03333333333333334,
+          "null_q975": 0.045238095238095244
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "d411b88c41314a7f9c998995b8f091e36467ebc0ec3c47d1b9e7477f1939c9d9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F,G,H,I": 33,
+        "D,E,F,G,H,I": 2,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.49910714285714286,
+          "permutation_mean": 0.5002932793279327,
+          "matched_minus_permutation": -0.0011861364707898003,
+          "null_q025": 0.49696428571428564,
+          "null_q975": 0.5042857142857142,
+          "p_greater": 0.7705,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.7761538461538462,
+          "permutation_mean": 0.7815370286820558,
+          "matched_minus_permutation": -0.0053831825282095735,
+          "null_q025": 0.773877997002997,
+          "null_q975": 0.7926991758241758
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "d411b88c41314a7f9c998995b8f091e36467ebc0ec3c47d1b9e7477f1939c9d9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F,G,H,I": 33,
+        "D,E,F,G,H,I": 1,
+        "G,H,I": 2
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.4928571428571429,
+          "permutation_mean": 0.4953479187204434,
+          "matched_minus_permutation": -0.002490775863300543,
+          "null_q025": 0.49071428571428566,
+          "null_q975": 0.5002678571428572,
+          "p_greater": 0.8787,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.7636538461538462,
+          "permutation_mean": 0.7708583699070873,
+          "matched_minus_permutation": -0.007204523753241099,
+          "null_q025": 0.7613779970029972,
+          "null_q975": 0.7823145604395606
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "qwen36_27b",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "d411b88c41314a7f9c998995b8f091e36467ebc0ec3c47d1b9e7477f1939c9d9",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F,G,H,I": 32,
+        "D,E,F,G,H,I": 2,
+        "G,H,I": 2
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5003571428571428,
+          "permutation_mean": 0.5057909094480877,
+          "matched_minus_permutation": -0.005433766590944855,
+          "null_q025": 0.5003571428571428,
+          "null_q975": 0.5114285714285713,
+          "p_greater": 0.9751,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.7682692307692308,
+          "permutation_mean": 0.7742802254542804,
+          "matched_minus_permutation": -0.00601099468504962,
+          "null_q025": 0.763846153846154,
+          "null_q975": 0.7873145604395605
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.007720772077207719,
+          "matched_minus_permutation": -0.007720772077207719,
+          "null_q025": 0.0,
+          "null_q975": 0.025
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "a388daa8129932c93f049a58a13bbb792cd28cb236d4e86bf65b72cee23a990e",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C": 2,
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 11,
+        "A,B,C,D,E,F,G,H,I": 4,
+        "D,E,F": 3,
+        "D,E,F,G,H,I": 10,
+        "E,F": 1,
+        "G,H,I": 3,
+        "I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5215178571428571,
+          "permutation_mean": 0.5367353669890799,
+          "matched_minus_permutation": -0.015217509846222721,
+          "null_q025": 0.5194345238095239,
+          "null_q975": 0.553452380952381,
+          "p_greater": 0.9547,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.5990716921966921,
+          "permutation_mean": 0.615040028367361,
+          "matched_minus_permutation": -0.01596833617066895,
+          "null_q025": 0.5902906954156953,
+          "null_q975": 0.6408728146853147
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.08289328932893289,
+          "matched_minus_permutation": -0.03289328932893289,
+          "null_q025": 0.025,
+          "null_q975": 0.15
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "a388daa8129932c93f049a58a13bbb792cd28cb236d4e86bf65b72cee23a990e",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 21,
+        "A,B,C,D,E,F,G,H": 2,
+        "A,B,C,D,E,F,G,H,I": 4,
+        "D,E,F,G,H,I": 6,
+        "E,F,G,H,I": 2
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.49613095238095245,
+          "permutation_mean": 0.49947466472837765,
+          "matched_minus_permutation": -0.0033437123474251984,
+          "null_q025": 0.4918452380952381,
+          "null_q975": 0.5079166666666668,
+          "p_greater": 0.7818,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6683626789876791,
+          "permutation_mean": 0.6769534370603227,
+          "matched_minus_permutation": -0.008590758072643645,
+          "null_q025": 0.6609889277389278,
+          "null_q975": 0.6932889818514819
+        },
+        "exact_set": {
+          "matched_mean": 0.075,
+          "permutation_mean": 0.0862161216121612,
+          "matched_minus_permutation": -0.011216121612161206,
+          "null_q025": 0.025,
+          "null_q975": 0.15
+        }
+      }
+    },
+    {
+      "model": "glm46v_flash",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "a388daa8129932c93f049a58a13bbb792cd28cb236d4e86bf65b72cee23a990e",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E": 1,
+        "A,B,C,D,E,F": 21,
+        "A,B,C,D,E,F,G,H": 1,
+        "A,B,C,D,E,F,G,H,I": 3,
+        "D,E,F,G,H,I": 7,
+        "E,F": 1,
+        "E,F,G,H,I": 1,
+        "G,H,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.49702380952380965,
+          "permutation_mean": 0.5029742349234924,
+          "matched_minus_permutation": -0.005950425399682713,
+          "null_q025": 0.4937202380952382,
+          "null_q975": 0.5135416666666667,
+          "p_greater": 0.8803,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6379834054834055,
+          "permutation_mean": 0.6556218880226905,
+          "matched_minus_permutation": -0.017638482539285016,
+          "null_q025": 0.6355502136752136,
+          "null_q975": 0.6785680465367966
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.07991799179917991,
+          "matched_minus_permutation": -0.029917991799179908,
+          "null_q025": 0.025,
+          "null_q975": 0.15
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "80cfff2d9352840beeb343fcfd1dcbbbe914bf30d48e422b95e475e7df0a75af",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C": 1,
+        "A,B,C,D,E,F,G,H,I": 6,
+        "D,E,F,G,H,I": 1,
+        "INVALID": 28
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.12285714285714286,
+          "permutation_mean": 0.12501257268583998,
+          "matched_minus_permutation": -0.002155429828697125,
+          "null_q025": 0.12285714285714286,
+          "null_q975": 0.12714285714285714,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.1910551948051948,
+          "permutation_mean": 0.19254438890858783,
+          "matched_minus_permutation": -0.0014891941033930156,
+          "null_q025": 0.17932900432900434,
+          "null_q975": 0.20350961538461537
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "80cfff2d9352840beeb343fcfd1dcbbbe914bf30d48e422b95e475e7df0a75af",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A": 13,
+        "A,B,C,D,E,F,G,H,I": 23
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.4496130952380953,
+          "permutation_mean": 0.45037872537253726,
+          "matched_minus_permutation": -0.0007656301344419747,
+          "null_q025": 0.4417857142857143,
+          "null_q975": 0.45898809523809525,
+          "p_greater": 0.5786,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.5217857142857143,
+          "permutation_mean": 0.5258815238208804,
+          "matched_minus_permutation": -0.004095809535166084,
+          "null_q025": 0.5106524725274726,
+          "null_q975": 0.5415476190476192
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "internvl35_8b_hf",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "80cfff2d9352840beeb343fcfd1dcbbbe914bf30d48e422b95e475e7df0a75af",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A": 5,
+        "A,B,C,D,E,F,G,H,I": 31
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.47991071428571425,
+          "permutation_mean": 0.4840862300515766,
+          "matched_minus_permutation": -0.0041755157658623365,
+          "null_q025": 0.47886904761904764,
+          "null_q975": 0.4895833333333333,
+          "p_greater": 0.9394,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.7047870879120881,
+          "permutation_mean": 0.7125603711927969,
+          "matched_minus_permutation": -0.007773283280708809,
+          "null_q025": 0.7026442307692309,
+          "null_q975": 0.7234203296703298
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "5117d7c58f514309ff3512b53ed89dea87533b3a44b496bc476176c3bedda4dc",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F,G,H,I": 35,
+        "A,C,E,G,I": 1
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5008928571428571,
+          "permutation_mean": 0.4998100226689336,
+          "matched_minus_permutation": 0.001082834473923544,
+          "null_q025": 0.4979166666666666,
+          "null_q975": 0.5020833333333334,
+          "p_greater": 0.5612,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.7986858974358975,
+          "permutation_mean": 0.799061669001288,
+          "matched_minus_permutation": -0.0003757715653905924,
+          "null_q025": 0.7975305944055944,
+          "null_q975": 0.8038942307692309
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "5117d7c58f514309ff3512b53ed89dea87533b3a44b496bc476176c3bedda4dc",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,C": 11,
+        "A,C,E,F,H,I": 1,
+        "A,C,E,G,I": 18,
+        "A,C,E,I": 2,
+        "INVALID": 4
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.4298214285714286,
+          "permutation_mean": 0.4314579374604127,
+          "matched_minus_permutation": -0.001636508888984145,
+          "null_q025": 0.42053571428571423,
+          "null_q975": 0.44330357142857146,
+          "p_greater": 0.6004,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.446607559107559,
+          "permutation_mean": 0.4457868317634293,
+          "matched_minus_permutation": 0.0008207273441296903,
+          "null_q025": 0.4327019508269508,
+          "null_q975": 0.4593600843600843
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "medgemma15_4b",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "5117d7c58f514309ff3512b53ed89dea87533b3a44b496bc476176c3bedda4dc",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "G,I": 36
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5134523809523809,
+          "permutation_mean": 0.5134523809523809,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.5134523809523809,
+          "null_q975": 0.5134523809523809,
+          "p_greater": 1.0,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.3590873015873016,
+          "permutation_mean": 0.35908730158730157,
+          "matched_minus_permutation": 5.551115123125783e-17,
+          "null_q025": 0.3590873015873016,
+          "null_q975": 0.3590873015873016
+        },
+        "exact_set": {
+          "matched_mean": 0.0,
+          "permutation_mean": 0.0,
+          "matched_minus_permutation": 0.0,
+          "null_q025": 0.0,
+          "null_q975": 0.0
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "care",
+      "variant": "current",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "52e4e98b59c645eb97982f33aac8a5f154e8f973a9f573aad5b02877329cd1eb",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F": 1,
+        "A,B,C,D,E,F,G,H,I": 6,
+        "B,C,D,E,F,G": 1,
+        "D,E,F": 8,
+        "D,E,F,G,H": 4,
+        "D,E,F,G,H,I": 13,
+        "INVALID": 3
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.6002083333333333,
+          "permutation_mean": 0.5971798578667391,
+          "matched_minus_permutation": 0.003028475466594238,
+          "null_q025": 0.5837782738095237,
+          "null_q975": 0.6104166666666666,
+          "p_greater": 0.341,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6755173992673993,
+          "permutation_mean": 0.6699138315360562,
+          "matched_minus_permutation": 0.005603567731343073,
+          "null_q025": 0.6575597319347318,
+          "null_q975": 0.6837406343656343
+        },
+        "exact_set": {
+          "matched_mean": 0.05,
+          "permutation_mean": 0.07516501650165017,
+          "matched_minus_permutation": -0.025165016501650164,
+          "null_q025": 0.0,
+          "null_q975": 0.125
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "care",
+      "variant": "example_ac",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "52e4e98b59c645eb97982f33aac8a5f154e8f973a9f573aad5b02877329cd1eb",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F": 1,
+        "A,B,C,D,E,F,G,H,I": 17,
+        "D,E,F": 2,
+        "D,E,F,G,H": 5,
+        "D,E,F,G,H,I": 6,
+        "G,H,I": 2,
+        "INVALID": 3
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5189285714285714,
+          "permutation_mean": 0.5216890200924855,
+          "matched_minus_permutation": -0.002760448663914117,
+          "null_q025": 0.50809375,
+          "null_q975": 0.5347336309523809,
+          "p_greater": 0.6556,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.6755092823842824,
+          "permutation_mean": 0.6876880917778758,
+          "matched_minus_permutation": -0.012178809393593393,
+          "null_q025": 0.6706980519480521,
+          "null_q975": 0.7063495566933067
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.027110211021102115,
+          "matched_minus_permutation": -0.002110211021102114,
+          "null_q025": 0.0,
+          "null_q975": 0.075
+        }
+      }
+    },
+    {
+      "model": "gemma4_26b_a4b",
+      "dataset": "care",
+      "variant": "example_gi",
+      "manifest_sha256": "b5e3a2948a856e74b9303ccc1c3f84434f0173f99d13a24f55c70fab843748d8",
+      "predictions_sha256": "52e4e98b59c645eb97982f33aac8a5f154e8f973a9f573aad5b02877329cd1eb",
+      "n_patients": 20,
+      "n_eligible_patients": 20,
+      "excluded_patients": [],
+      "strata": {
+        "entry": 4,
+        "entry+exit": 16
+      },
+      "n_items": 36,
+      "response_counts_all_items": {
+        "A,B,C,D,E,F": 1,
+        "A,B,C,D,E,F,G,H,I": 20,
+        "D,E,F": 1,
+        "D,E,F,G,H": 3,
+        "D,E,F,G,H,I": 6,
+        "G,H,I": 2,
+        "INVALID": 3
+      },
+      "n_permutations": 9999,
+      "seed": 20261002,
+      "metrics": {
+        "balanced_accuracy": {
+          "matched_mean": 0.5137797619047619,
+          "permutation_mean": 0.5182600462427195,
+          "matched_minus_permutation": -0.004480284337957552,
+          "null_q025": 0.5051175595238094,
+          "null_q975": 0.5304761904761904,
+          "p_greater": 0.7586,
+          "p_holm": 1.0
+        },
+        "slice_f1": {
+          "matched_mean": 0.686873126873127,
+          "permutation_mean": 0.7026520276278378,
+          "matched_minus_permutation": -0.01577890075471089,
+          "null_q025": 0.6861495691808192,
+          "null_q975": 0.7213928259240758
+        },
+        "exact_set": {
+          "matched_mean": 0.025,
+          "permutation_mean": 0.03476597659765977,
+          "matched_minus_permutation": -0.009765976597659771,
+          "null_q025": 0.0,
+          "null_q975": 0.1
+        }
+      }
+    }
+  ]
+}
