@@ -62,14 +62,15 @@ class PipelineVLM(VLMAdapter):
         )
 
     def generate(self, image_path, prompt, max_new_tokens=None):
-        image_path = str(Path(image_path).resolve())
+        content = []
+        if image_path is not None:
+            image_path = str(Path(image_path).resolve())
+            content.append({"type": "image", "url": image_path})
+        content.append({"type": "text", "text": prompt})
         messages = [
             {
                 "role": "user",
-                "content": [
-                    {"type": "image", "url": image_path},
-                    {"type": "text", "text": prompt},
-                ],
+                "content": content,
             }
         ]
 

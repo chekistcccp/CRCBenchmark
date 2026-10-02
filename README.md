@@ -58,6 +58,17 @@ ASSOCIATION_ANALYSIS=1 bash run_supplement.sh
 
 患者置换检验按 entry/exit 可用性分组，整块置换患者回答，保留同一患者两种边界的相关性；报告正确配对相对于置换配对的平衡准确率差值、9,999 次置换检验及全部 36 组比较的 Holm 校正。它检验回答与患者真值的对应证据，不等同于因果视觉依赖实验；不显著也不能证明完全忽略图像。该分析仅使用开发集，全部提示均报告，不据此修改正式提示或排名。详见 [本轮评估](docs/RESULT_ANALYSIS_2026-10-02.md)。
 
+## 发表准备的新增实验
+
+[六篇 2026 CCF-A benchmark 对照及研究缺口](docs/PUBLICATION_GAP_REVIEW_2026-10-02.md)区分了已经具备的代码与尚缺的研究证据。当前没有医生参与，专家可判读性核验与人工基线仍未完成。
+
+```bash
+bash run_publication_supplement.sh                    # 离线准备，不加载模型
+EVIDENCE_CONTROL=1 bash run_publication_supplement.sh # 已分配 GPU：全部六模型的图像对照
+```
+
+对相同开发题目比较原图、仅文字和保留标签的中性图，共 6,048 条预测；报告患者配对差值和格式率。输入像素/掩码哈希及模型/环境配置参与续跑校验。另生成 78 题的独立盲评包，输出均在 `runs/protocol_v2_5/supplement/publication/`。迁移输入可设置 `ARTIFACT_ROOT`；换环境或配置时使用新的 `OUTPUT_ROOT`。这些是事后补充分析；新 GPU 对照尚待运行。
+
 ## 环境
 
 使用 Python 3.11、PyTorch 2.13.0、torchvision 0.28.0、CUDA 12.6。先从 PyTorch cu126 wheel 安装 torch/torchvision，再运行 `pip install -r requirements.txt`；`requirements.txt` 故意不包含 torch。`run.sh` 的 preflight 会验证 GPU 与运行时，不会自行更换 PyTorch。
